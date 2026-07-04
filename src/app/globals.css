@@ -1,26 +1,79 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ブランドカラートークンは layout.tsx の <style> タグで定義（Turbopack HMR 対策） */
+
+  /* 既存セマンティックトークン → 新パレットへ再マッピング（既存マークアップを壊さない） */
+  --background: var(--c-cream);
+  --foreground: #2d2d2d;
+  --card-bg: var(--c-cream-2);
+  --primary: var(--c-teal);
+  --primary-light: var(--c-teal-green);
+  --primary-dark: #2d7066;
+  --on-primary: #ffffff;
+  --secondary: var(--c-green);
+  --secondary-light: var(--c-green-light);
+  --on-secondary: var(--c-plum);
+  --accent: var(--c-pink);
+  --accent-light: #e4b3c4;
+  --muted: #6b7280;
+  --border: #ddd8b8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-card-bg: var(--card-bg);
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-on-primary: var(--on-primary);
+  --color-secondary: var(--secondary);
+  --color-secondary-light: var(--secondary-light);
+  --color-on-secondary: var(--on-secondary);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* ブランドカラー直接参照 */
+  --color-c-citron: var(--c-citron);
+  --color-c-cream: var(--c-cream);
+  --color-c-cream-2: var(--c-cream-2);
+  --color-c-blush: var(--c-blush);
+  --color-c-rose: var(--c-rose);
+  --color-c-lilac: var(--c-lilac);
+  --color-c-plum: var(--c-plum);
+  --color-c-plum-dark: var(--c-plum-dark);
+  --color-c-violet: var(--c-violet);
+  --color-c-ink: var(--c-ink);
+  --color-c-pink: var(--c-pink);
+  --color-c-green: var(--c-green);
+  --color-c-green-light: var(--c-green-light);
+  --color-c-teal-green: var(--c-teal-green);
+  --color-c-teal: var(--c-teal);
+  --color-c-sage: var(--c-sage);
+  --color-c-sage-light: var(--c-sage-light);
+
+  /* フォント役割 */
+  --font-sans: var(--font-noto-sans-jp), "Noto Sans JP", sans-serif;
+  --font-inria: "inria-serif", serif;
+  --font-maruminshinano: "kinuta-maruminshinano-stdn", serif;
+  --font-ryotext: "ryo-text-plusn", serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-noto-sans-jp, "Noto Sans JP"), sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: var(--c-teal);
+  color: #fff;
 }

@@ -33,9 +33,25 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Environment variables — never commit secrets#
+.env
+!.env.example
+!.env.*.example
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Secrets / credentials
+secrets/
+credentials/
+*.key
+
+# Claude Code local-only settings (machine-specific overrides)
+.claude/settings.local.json
+
+# User Bkup
+*.bkup
