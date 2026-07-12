@@ -79,16 +79,23 @@ export const ERROR_STATUSES: PendingReadingStatus[] = [
 ];
 
 /**
- * 管理画面から実行できる状態遷移（バックエンド state_machine.py のマトリクスと同一。
- * 承認 + リトライ復帰3種のみ。他の遷移はバックエンド/バッチが担う）。
+ * 管理画面から実行できる操作（バックエンド state_machine.py のマトリクスと対応）。
+ *
+ * - transition: フロントから Supabase を直接 UPDATE する遷移
+ *   （承認、send_error→approved。approved は H-3 バッチが自動で拾うため完結する）
+ * - regenerate: バックエンドの管理用エンドポイントを呼ぶ操作
+ *   （calc_error / generation_error。status を戻すだけでは生成が再実行されないため、
+ *    POST /api/admin/regenerate/{id} が遷移＋再キックをまとめて行う）
  */
-export const ADMIN_TRANSITIONS: Partial<
-  Record<PendingReadingStatus, { to: PendingReadingStatus; label: string }>
-> = {
-  ready_for_review: { to: "approved", label: "承認する" },
-  calc_error: { to: "pending", label: "pending に戻す" },
-  generation_error: { to: "generating", label: "generating に戻す" },
-  send_error: { to: "approved", label: "approved に戻す（再配信）" },
+export type AdminAction =
+  | { kind: "transition"; to: PendingReadingStatus; label: string }
+  | { kind: "regenerate"; label: string };
+
+export const ADMIN_ACTIONS: Partial<Record<PendingReadingStatus, AdminAction>> = {
+  ready_for_review: { kind: "transition", to: "approved", label: "承認する" },
+  send_error: { kind: "transition", to: "approved", label: "approved に戻す（再配信）" },
+  calc_error: { kind: "regenerate", label: "鑑定文を再生成する" },
+  generation_error: { kind: "regenerate", label: "鑑定文を再生成する" },
 };
 
 /**
@@ -114,4 +121,36 @@ export async function transitionStatus(
     .select("id");
   if (error) throw error;
   return (data ?? []).length > 0;
+}
+
+/**
+ * バックエンドの管理用エンドポイントで鑑定文の再生成をキックする
+ * （calc_error / generation_error 用。遷移＋再実行をバックエンドが行う）。
+ *
+ * 認証には現在の Supabase セッションのアクセストークンを使う
+ * （バックエンドが ADMIN_EMAIL と照合する）。
+ *
+ * @throws Error 未ログイン、API URL 未設定、またはバックエンドがエラーを返した場合
+ */
+export async function regenerateReading(id: string): Promise<void> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new Error("NEXT_PUBLIC_API_URL が未設定です（.env.local を確認）");
+  }
+  const { data } = await getSupabase().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    throw new Error("ログインセッションがありません");
+  }
+  const res = await fetch(
+    `${apiUrl.replace(/\/$/, "")}/api/admin/regenerate/${id}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `再生成リクエストが失敗しました（HTTP ${res.status}）`);
+  }
 }

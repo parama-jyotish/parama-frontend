@@ -12,8 +12,9 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ADMIN_TRANSITIONS,
+  ADMIN_ACTIONS,
   getSupabase,
+  regenerateReading,
   transitionStatus,
   type PendingReading,
 } from "@/lib/supabase-admin";
@@ -90,25 +91,34 @@ export default function AdminDetailPage({
     }
   };
 
-  const doTransition = async () => {
+  const doAction = async () => {
     if (!record) return;
-    const transition = ADMIN_TRANSITIONS[record.status];
-    if (!transition) return;
-    if (!window.confirm(`status を ${record.status} → ${transition.to} にします。よろしいですか？`)) {
+    const action = ADMIN_ACTIONS[record.status];
+    if (!action) return;
+    const confirmText =
+      action.kind === "transition"
+        ? `status を ${record.status} → ${action.to} にします。よろしいですか？`
+        : "鑑定文の再生成を開始します。よろしいですか？";
+    if (!window.confirm(confirmText)) {
       return;
     }
     setBusy(true);
     setMessage(null);
     try {
-      const ok = await transitionStatus(record.id, record.status, transition.to);
-      setMessage(
-        ok
-          ? `${transition.to} に遷移しました`
-          : "遷移できませんでした（他の処理が先に status を変更した可能性）"
-      );
+      if (action.kind === "transition") {
+        const ok = await transitionStatus(record.id, record.status, action.to);
+        setMessage(
+          ok
+            ? `${action.to} に遷移しました`
+            : "遷移できませんでした（他の処理が先に status を変更した可能性）"
+        );
+      } else {
+        await regenerateReading(record.id);
+        setMessage("再生成を開始しました（完了すると ready_for_review に戻ります）");
+      }
       await loadRecord();
     } catch (e) {
-      setMessage(`遷移エラー: ${e instanceof Error ? e.message : String(e)}`);
+      setMessage(`操作エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -127,7 +137,7 @@ export default function AdminDetailPage({
     );
   }
 
-  const transition = ADMIN_TRANSITIONS[record.status];
+  const action = ADMIN_ACTIONS[record.status];
   const birth =
     record.birth_year !== null
       ? `${record.birth_year}-${record.birth_month}-${record.birth_day} ` +
@@ -196,11 +206,11 @@ export default function AdminDetailPage({
         </button>
       </section>
 
-      {transition && (
+      {action && (
         <section style={{ background: "white", borderRadius: 8, padding: 16 }}>
           <button
             type="button"
-            onClick={doTransition}
+            onClick={doAction}
             disabled={busy}
             style={{
               ...btnStyle,
@@ -208,7 +218,7 @@ export default function AdminDetailPage({
               width: "100%",
             }}
           >
-            {transition.label}
+            {action.label}
           </button>
         </section>
       )}
