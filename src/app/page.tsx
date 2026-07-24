@@ -6,22 +6,20 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LogoWordmark from "@/components/LogoWordmark";
+import styles from "./page.module.css";
 
 // ── 夜空マスクスタイル（citron 層の中央正方形の窓） ──────────
-const WINDOW_PX = 152;
-const HALF_WINDOW = WINDOW_PX / 2;
-// 窓の上端: ワードマーク下端(89+63≈152px) + 48px gap
-const WINDOW_TOP = 200;
-
+// 窓のサイズ・位置は page.module.css の .hero の CSS 変数で定義
+// （モバイル: 152px / 窓上端 200px 相当。PC ではリキッドにスケール）
 const skyWindowMask: React.CSSProperties = {
   WebkitMaskImage:
     "linear-gradient(black, black), linear-gradient(black, black)",
   maskImage:
     "linear-gradient(black, black), linear-gradient(black, black)",
-  WebkitMaskSize: `100% 100%, ${WINDOW_PX}px ${WINDOW_PX}px`,
-  maskSize: `100% 100%, ${WINDOW_PX}px ${WINDOW_PX}px`,
-  WebkitMaskPosition: `0 0, center ${WINDOW_TOP}px`,
-  maskPosition: `0 0, center ${WINDOW_TOP}px`,
+  WebkitMaskSize: "100% 100%, var(--window-px) var(--window-px)",
+  maskSize: "100% 100%, var(--window-px) var(--window-px)",
+  WebkitMaskPosition: "0 0, center var(--window-top)",
+  maskPosition: "0 0, center var(--window-top)",
   WebkitMaskRepeat: "no-repeat, no-repeat",
   maskRepeat: "no-repeat, no-repeat",
   WebkitMaskComposite: "xor",
@@ -39,55 +37,35 @@ interface ContentSectionProps {
   body: string;
   bodyColor: string;
   sectionRef?: React.RefObject<HTMLElement | null>;
+  /** PC 2カラム時の見出し群の配置（モバイルでは無効） */
+  align?: "left" | "right";
 }
 
 function ContentSection({
   bg, enHeading, enColor, starColor, jaHeading, jaColor, body, bodyColor, sectionRef,
+  align = "left",
 }: ContentSectionProps) {
   return (
-    <section
-      ref={sectionRef}
-      style={{ background: bg, position: "relative", zIndex: 2 }}
-    >
-      <div style={{ maxWidth: 512, margin: "0 auto", padding: "80px 24px" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-inria)",
-            fontSize: "clamp(1.625rem, 8.85vw, 2.65rem)",
-            lineHeight: 1,
-            color: enColor,
-            letterSpacing: "-0.01em",
-            textAlign: "center",
-          }}
-        >
-          {enHeading}
-        </p>
-        <p style={{ fontSize: "1.25rem", color: starColor, margin: "14px 0", textAlign: "center" }}>
-          ✶
-        </p>
-        <p
-          style={{
-            fontFamily: "var(--font-maruminshinano)",
-            fontSize: "0.9375rem",
-            color: jaColor,
-            lineHeight: 1.7,
-            marginBottom: 28,
-            textAlign: "center",
-            fontWeight: 700,
-          }}
-        >
-          {jaHeading}
-        </p>
-        <p
-          style={{
-            fontFamily: "var(--font-ryotext)",
-            fontSize: "0.8125rem",
-            color: bodyColor,
-            lineHeight: 2,
-            whiteSpace: "pre-wrap",
-            padding: "0 22px",
-          }}
-        >
+    <section ref={sectionRef} className={styles.section} style={{ background: bg }}>
+      <div
+        className={
+          align === "right"
+            ? `${styles.secInner} ${styles.secRight}`
+            : styles.secInner
+        }
+      >
+        <div className={styles.secHead}>
+          <p className={styles.enHeading} style={{ color: enColor }}>
+            {enHeading}
+          </p>
+          <p className={styles.star} style={{ color: starColor }}>
+            ✶
+          </p>
+          <p className={styles.jaHeading} style={{ color: jaColor }}>
+            {jaHeading}
+          </p>
+        </div>
+        <p className={styles.secBody} style={{ color: bodyColor }}>
           {body}
         </p>
       </div>
@@ -141,19 +119,19 @@ export default function Home() {
     watch(
       natureRef.current,
       (e) => setNatureInView(e.isIntersecting),
-      { threshold: 0, rootMargin: "-50% 0px -50% 0px" }
+      { threshold: 0, rootMargin: "0% 0px -95% 0px" }
     );
 
     watch(
       ctaSectionRef.current,
       (e) => setCtaSectionInView(e.isIntersecting),
-      { threshold: 0, rootMargin: "-50% 0px -50% 0px" }
+      { threshold: 0, rootMargin: "0% 0px -95% 0px" }
     );
 
     watch(
       closingRef.current,
       (e) => setClosingInView(e.isIntersecting),
-      { threshold: 0, rootMargin: "-50% 0px -50% 0px" }
+      { threshold: 0, rootMargin: "0% 0px -95% 0px" }
     );
 
     return () => observers.forEach((obs) => obs.disconnect());
@@ -186,6 +164,7 @@ export default function Home() {
       {/* ── 固定ヘッダー ── */}
       <Header
         variant="home"
+        fluid
         logoVisible={logoVisible}
         ctaVisible={ctaVisible}
         ctaVariant={ctaVariant}
@@ -196,6 +175,7 @@ export default function Home() {
       ══════════════════════════════════════ */}
       <section
         ref={heroRef}
+        className={styles.hero}
         style={{
           position: "relative",
           zIndex: 1,
@@ -207,8 +187,8 @@ export default function Home() {
         <div
           style={{
             position: "absolute",
-            top: 20,
-            left: 20,
+            top: "var(--edge-top)",
+            left: "var(--edge-pad)",
             zIndex: 30,
           }}
         >
@@ -235,7 +215,7 @@ export default function Home() {
         <div
           style={{
             position: "absolute",
-            top: 89,
+            top: "var(--wordmark-top)",
             left: 0,
             right: 0,
             display: "flex",
@@ -245,7 +225,11 @@ export default function Home() {
           }}
         >
           <LogoWordmark
-            style={{ width: 284, height: "auto", color: "var(--c-plum)" }}
+            style={{
+              width: "var(--wordmark-w)",
+              height: "auto",
+              color: "var(--c-plum)",
+            }}
           />
         </div>
 
@@ -253,7 +237,7 @@ export default function Home() {
         <div
           style={{
             position: "absolute",
-            top: WINDOW_TOP + WINDOW_PX + 28,
+            top: "calc(var(--window-top) + var(--window-px) + var(--tagline-gap))",
             left: 0,
             right: 0,
             zIndex: 30,
@@ -264,14 +248,7 @@ export default function Home() {
             textAlign: "center",
           }}
         >
-          <p
-            style={{
-              fontFamily: "var(--font-maruminshinano)",
-              color: "var(--c-violet)",
-              fontSize: "1rem",
-              lineHeight: 1,
-            }}
-          >
+          <p className={styles.tagline}>
             星が描く地図を読み解き
             <br />
             本来の自分とつながる
@@ -279,28 +256,13 @@ export default function Home() {
 
           <Link
             href="/free/lagna"
-            style={{
-              marginTop: 28,
-              display: "inline-block",
-              background: "var(--c-pink)",
-              color: "var(--c-ink)",
-              padding: "9px 20px",
-              borderRadius: "9999px",
-              fontSize: "0.75rem",
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
+            className={styles.pillBtn}
+            style={{ marginTop: 28 }}
           >
             ラグナを知る（無料・登録なし）
           </Link>
 
-          <p
-            style={{
-              color: "var(--c-violet-2)",
-              fontSize: "0.72rem",
-              marginTop: 14,
-            }}
-          >
+          <p className={styles.annotation}>
             生まれた日・時刻・場所を入力するだけ（約1分）
           </p>
         </div>
@@ -323,6 +285,7 @@ export default function Home() {
       ══════════════════════════════════════ */}
       <ContentSection
         sectionRef={insightsRef}
+        align="left"
         bg="var(--c-cream)"
         enHeading="Insights"
         enColor="var(--c-green-light)"
@@ -339,6 +302,7 @@ export default function Home() {
           Timing
       ══════════════════════════════════════ */}
       <ContentSection
+        align="right"
         bg="var(--c-blush)"
         enHeading="Timing"
         enColor="var(--c-teal-green)"
@@ -356,6 +320,7 @@ export default function Home() {
       ══════════════════════════════════════ */}
       <ContentSection
         sectionRef={natureRef}
+        align="left"
         bg="var(--c-rose)"
         enHeading="Nature"
         enColor="var(--c-sage)"
@@ -372,6 +337,7 @@ export default function Home() {
           Wisdom
       ══════════════════════════════════════ */}
       <ContentSection
+        align="right"
         bg="var(--c-blush)"
         enHeading="Wisdom"
         enColor="var(--c-teal-green)"
@@ -395,52 +361,17 @@ export default function Home() {
           zIndex: 2,
         }}
       >
-        <div
-          style={{ maxWidth: 512, margin: "0 auto", padding: "80px 24px" }}
-        >
-          <p
-            style={{
-              fontFamily: "var(--font-maruminshinano)",
-              fontSize: "0.9375rem",
-              color: "var(--c-green)",
-              lineHeight: 1.7,
-              marginBottom: 28,
-              textAlign: "center",
-              fontWeight: 700,
-            }}
-          >
+        <div className={styles.ctaInner}>
+          <p className={styles.ctaHeading}>
             まずはラグナ（上昇星座）を<br />知ることから
           </p>
 
-          <p
-            style={{
-              fontFamily: "var(--font-ryotext)",
-              fontSize: "0.8125rem",
-              color: "var(--c-green)",
-              lineHeight: 2,
-              whiteSpace: "pre-wrap",
-              padding: "0 22px",
-              marginBottom: 36,
-              fontWeight: 500,
-            }}
-          >
+          <p className={styles.ctaBody}>
             {"あなたの基本的な性質や能力が映し出されているのがラグナ。\n生まれた瞬間の東の地平線に昇っていた星座をそう呼んでいます。\n以下ではラグナだけでなく、太陽星座、月星座、月のナクシャトラもあわせてお調べします。\n生まれた日・時刻・場所を入力するだけで、すぐに結果が出ます。"}
           </p>
 
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <Link
-              href="/free/lagna"
-              style={{
-                display: "inline-block",
-                background: "var(--c-pink)",
-                color: "var(--c-ink)",
-                padding: "9px 20px",
-                borderRadius: "9999px",
-                fontSize: "0.75rem",
-                fontWeight: 500,
-                textDecoration: "none",
-              }}
-            >
+            <Link href="/free/lagna" className={styles.pillBtn}>
               ラグナを知る（無料・登録なし）
             </Link>
           </div>
@@ -452,22 +383,21 @@ export default function Home() {
       ══════════════════════════════════════ */}
       <section
         ref={closingRef}
+        className={styles.closing}
         style={{
           background: "#2d3b6a",
           position: "relative",
           zIndex: 2,
-          padding: "240px 24px",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        {/* cta-sky.jpg 152×152 中央配置 */}
+        {/* cta-sky.jpg 中央配置（モバイル 152×152、PC はリキッド） */}
         <div
+          className={styles.closingWindow}
           style={{
             position: "relative",
-            width: 152,
-            height: 152,
             flexShrink: 0,
           }}
         >

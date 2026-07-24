@@ -95,18 +95,18 @@ export default function TokushohoPage() {
     <>
       <Header />
       <main className="flex-1 bg-background">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-          <h1 className="text-2xl font-normal text-foreground mb-8 text-center">
+        <div className="max-w-2xl mx-auto px-6 py-12 sm:py-20">
+          <h1 className="text-2xl font-normal text-c-teal mb-8 text-center">
             特定商取引法に基づく表記
           </h1>
-          <div className="bg-card-bg rounded-2xl p-8 sm:p-10 shadow-sm border border-border text-foreground/80 leading-relaxed">
-            <p className="text-sm text-muted mb-8">
+          <div className="py-8 sm:py-10 px-[22px] text-c-teal-deep leading-relaxed font-ryotext text-[0.9375rem]">
+            <p className="text-sm text-c-teal-deep mb-8">
               「特定商取引に関する法律」第11条に基づき、以下のとおり表示いたします。
             </p>
-            <dl className="divide-y divide-border">
+            <dl>
               {sections.map((section) => (
                 <div key={section.term} className="py-6 first:pt-0 last:pb-0">
-                  <dt className="text-sm font-medium text-foreground mb-1.5">
+                  <dt className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-1.5">
                     {section.term}
                   </dt>
                   <dd>{section.description}</dd>

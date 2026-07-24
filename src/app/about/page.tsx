@@ -20,16 +20,16 @@ export default function AboutPage() {
           <p
             style={{
               fontFamily: "var(--font-inria)",
-              fontSize: "clamp(2.75rem, 15vw, 4.5rem)",
+              fontSize: "clamp(1.625rem, 8.85vw, 2.65rem)",
               lineHeight: 1,
               color: "var(--c-green-light)",
               letterSpacing: "-0.01em",
-              marginBottom: 14,
+              textAlign: "center",
             }}
           >
             About
           </p>
-          <p style={{ fontSize: "1.25rem", color: "var(--c-green)", marginBottom: 48 }}>
+          <p style={{ fontSize: "1.25rem", color: "var(--c-green)", textAlign: "center", margin: "14px 0" }}>
             ✶
           </p>
 
@@ -38,11 +38,12 @@ export default function AboutPage() {
             style={{
               fontFamily: "var(--font-ryotext)",
               fontSize: "0.9375rem",
-              color: "var(--c-green)",
+              color: "var(--c-teal-deep)",
               lineHeight: 2.1,
               display: "flex",
               flexDirection: "column",
               gap: 28,
+              padding: "0 22px",
             }}
           >
 <p>

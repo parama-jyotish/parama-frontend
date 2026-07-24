@@ -37,7 +37,7 @@ const selectStyle: React.CSSProperties = {
   background: "white",
   padding: "0 12px",
   fontSize: "0.875rem",
-  color: "var(--foreground)",
+  color: "var(--c-teal-deep)",
   appearance: "auto",
 };
 
@@ -217,7 +217,7 @@ export default function LagnaPage() {
 
     return (
       <>
-        <Header variant="interior" showCta />
+        <Header variant="interior" showCta onCtaClick={handleRetry} />
         <main
           style={{
             flex: 1,
@@ -226,7 +226,7 @@ export default function LagnaPage() {
         >
           <div
             style={{
-              maxWidth: 512,
+              maxWidth: 672,
               margin: "0 auto",
               padding: "72px 24px 96px",
             }}
@@ -241,7 +241,7 @@ export default function LagnaPage() {
               <p
                 style={{
                   fontSize: "0.8125rem",
-                  color: "var(--muted)",
+                  color: "var(--c-teal)",
                   marginBottom: 12,
                 }}
               >
@@ -275,7 +275,13 @@ export default function LagnaPage() {
                 {result.rashi}
               </p>
               {lagnaData && (
-                <p style={{ fontSize: "0.8125rem", color: "var(--muted)" }}>
+                <p
+                  style={{
+                    fontFamily: "var(--font-maruminshinano)",
+                    fontSize: "0.8125rem",
+                    color: "var(--c-teal-green)",
+                  }}
+                >
                   {lagnaData.sanskrit}
                 </p>
               )}
@@ -284,8 +290,8 @@ export default function LagnaPage() {
             {/* ラグナ説明文 */}
             <div
               style={{
-                background: "var(--c-cream-2)",
-                borderRadius: 12,
+                border: "1px solid var(--c-sage)",
+                borderRadius: 10,
                 padding: "28px 24px",
                 marginBottom: 32,
               }}
@@ -295,8 +301,8 @@ export default function LagnaPage() {
                   style={{
                     fontFamily: "var(--font-ryotext)",
                     fontSize: "0.9375rem",
-                    color: "var(--foreground)",
-                    lineHeight: 2,
+                    color: "var(--c-teal)",
+                    lineHeight: 1.625,
                     whiteSpace: "pre-wrap",
                   }}
                 >
@@ -315,6 +321,8 @@ export default function LagnaPage() {
                 display: "flex",
                 flexDirection: "column",
                 gap: 14,
+                marginLeft: 25,
+                marginRight: 25,
                 marginBottom: 40,
               }}
             >
@@ -327,25 +335,32 @@ export default function LagnaPage() {
                   key={label}
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "baseline",
-                    borderBottom: "1px solid var(--border)",
+                    alignItems: "center",
+                    gap: 10,
                     paddingBottom: 10,
                   }}
                 >
                   <span
                     style={{
                       fontSize: "0.8125rem",
-                      color: "var(--muted)",
+                      color: "var(--c-teal)",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {label}
                   </span>
                   <span
                     style={{
+                      flex: 1,
+                      borderBottom: "1px solid var(--border)",
+                    }}
+                  />
+                  <span
+                    style={{
                       fontFamily: "var(--font-ryotext)",
                       fontSize: "0.9375rem",
-                      color: "var(--foreground)",
+                      color: "var(--c-teal)",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {value}
@@ -372,7 +387,7 @@ export default function LagnaPage() {
             )}
 
             {/* もっと詳しく知りたい方へ */}
-            <div style={{ marginBottom: 40 }}>
+            <div style={{ marginBottom: 40, textAlign: "center" }}>
               <p
                 style={{
                   fontFamily: "var(--font-maruminshinano)",
@@ -383,7 +398,7 @@ export default function LagnaPage() {
               >
                 もっと詳しく知りたい方へ
               </p>
-              <p style={{ fontSize: "0.8125rem", color: "var(--muted)", lineHeight: 1.7 }}>
+              <p style={{ fontSize: "0.8125rem", color: "var(--c-teal-green)", lineHeight: 1.7 }}>
                 詳しい鑑定メニューは近日公開予定です。
               </p>
             </div>
@@ -421,16 +436,16 @@ export default function LagnaPage() {
             <p
               style={{
                 fontFamily: "var(--font-inria)",
-                fontSize: "clamp(2.5rem, 13vw, 3.5rem)",
+                fontSize: "clamp(1.625rem, 8.85vw, 2.65rem)",
                 lineHeight: 1,
-                color: "var(--c-teal-green)",
+                color: "var(--c-green-light)",
                 letterSpacing: "-0.01em",
-                marginBottom: 14,
+                textAlign: "center",
               }}
             >
               Lagna
             </p>
-            <p style={{ fontSize: "1.25rem", color: "var(--c-teal-green)", marginBottom: 14 }}>
+            <p style={{ fontSize: "1.25rem", color: "var(--c-green)", textAlign: "center", margin: "14px 0" }}>
               ✶
             </p>
             <p
@@ -439,6 +454,8 @@ export default function LagnaPage() {
                 fontSize: "0.9375rem",
                 color: "var(--c-teal)",
                 lineHeight: 1.7,
+                marginLeft: 48,
+                marginRight: 48,
               }}
             >
               あなたが生まれた瞬間、東の地平線に昇っていた星座を調べます。
@@ -448,10 +465,8 @@ export default function LagnaPage() {
           {/* フォームカード */}
           <div
             style={{
-              background: "var(--c-cream-2)",
               borderRadius: 16,
               padding: "28px 24px",
-              border: "1px solid var(--border)",
             }}
           >
             {/* エラー */}
@@ -476,7 +491,7 @@ export default function LagnaPage() {
               <legend
                 style={{
                   fontSize: "0.8125rem",
-                  color: "var(--foreground)",
+                  color: "var(--c-teal-dark)",
                   marginBottom: 10,
                   fontWeight: 500,
                 }}
@@ -511,7 +526,7 @@ export default function LagnaPage() {
               <legend
                 style={{
                   fontSize: "0.8125rem",
-                  color: "var(--foreground)",
+                  color: "var(--c-teal-dark)",
                   marginBottom: 10,
                   fontWeight: 500,
                 }}
@@ -573,7 +588,7 @@ export default function LagnaPage() {
 
               {showTimePresets && (
                 <div style={{ marginTop: 10 }}>
-                  <p style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: 8 }}>
+                  <p style={{ fontSize: "0.75rem", color: "var(--c-teal-green)", marginBottom: 8 }}>
                     おおよその時間帯を選ぶと、時刻が自動でセットされます。
                   </p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 8 }}>
@@ -596,7 +611,7 @@ export default function LagnaPage() {
                           color:
                             selectedPreset === preset.label
                               ? "white"
-                              : "var(--foreground)",
+                              : "var(--c-teal-deep)",
                           borderColor:
                             selectedPreset === preset.label
                               ? "var(--c-teal)"
@@ -624,7 +639,7 @@ export default function LagnaPage() {
                       color:
                         selectedPreset === TIME_UNKNOWN_PRESET.label
                           ? "white"
-                          : "var(--muted)",
+                          : "var(--c-teal-green)",
                     }}
                   >
                     不明（正午で計算します）
@@ -638,7 +653,7 @@ export default function LagnaPage() {
               <legend
                 style={{
                   fontSize: "0.8125rem",
-                  color: "var(--foreground)",
+                  color: "var(--c-teal-dark)",
                   marginBottom: 10,
                   fontWeight: 500,
                 }}
@@ -652,6 +667,7 @@ export default function LagnaPage() {
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="例：東京、大阪、福岡"
                 list="city-list"
+                className="placeholder:text-c-teal-green"
                 style={{
                   ...selectStyle,
                   padding: "0 16px",
@@ -665,7 +681,7 @@ export default function LagnaPage() {
               <p
                 style={{
                   fontSize: "0.75rem",
-                  color: "var(--muted)",
+                  color: "var(--c-teal-green)",
                   marginTop: 6,
                 }}
               >

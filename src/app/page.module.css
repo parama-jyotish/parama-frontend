@@ -1,0 +1,215 @@
+/* トップページのスタイル。
+   〜899px はモバイル基準（従来の見た目を維持）、
+   900px〜 は PC ネイティブのリキッドレイアウト。 */
+
+/* ── Hero ジオメトリ（CSS 変数） ──
+   窓の上端 = ワードマーク上端 + ワードマーク高さ(幅×63/284) + gap */
+.hero {
+  --edge-pad: 20px;
+  --edge-top: 20px;
+  --wordmark-top: 89px;
+  --wordmark-w: 284px;
+  --hero-gap: 48px;
+  --window-px: 152px;
+  --window-top: calc(
+    var(--wordmark-top) + var(--wordmark-w) * 0.2218 + var(--hero-gap)
+  );
+  --tagline-gap: 28px;
+}
+
+.tagline {
+  font-family: var(--font-maruminshinano);
+  color: var(--c-violet);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.annotation {
+  color: var(--c-violet-2);
+  font-size: 0.72rem;
+  margin-top: 14px;
+}
+
+.pillBtn {
+  display: inline-block;
+  background: var(--c-pink);
+  color: var(--c-ink);
+  padding: 9px 20px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: filter 0.15s;
+}
+@media (hover: hover) {
+  .pillBtn:hover {
+    filter: brightness(0.95);
+  }
+}
+
+/* ── コンテンツセクション（Insights / Timing / Nature / Wisdom） ── */
+.section {
+  position: relative;
+  z-index: 2;
+}
+.secInner {
+  max-width: 512px;
+  margin: 0 auto;
+  padding: 80px 24px;
+}
+.secHead {
+  min-width: 0;
+}
+.enHeading {
+  font-family: var(--font-inria);
+  font-size: clamp(1.625rem, 8.85vw, 2.65rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+.star {
+  font-size: 1.25rem;
+  margin: 14px 0;
+  text-align: center;
+}
+.jaHeading {
+  font-family: var(--font-maruminshinano);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  margin-bottom: 28px;
+  text-align: center;
+  font-weight: 700;
+}
+.secBody {
+  font-family: var(--font-ryotext);
+  font-size: 0.8125rem;
+  line-height: 2;
+  white-space: pre-wrap;
+  padding: 0 22px;
+}
+
+/* ── まずはラグナを知る ── */
+.ctaInner {
+  max-width: 512px;
+  margin: 0 auto;
+  padding: 80px 24px;
+}
+.ctaHeading {
+  font-family: var(--font-maruminshinano);
+  font-size: 0.9375rem;
+  color: var(--c-green);
+  line-height: 1.7;
+  margin-bottom: 28px;
+  text-align: center;
+  font-weight: 700;
+}
+.ctaBody {
+  font-family: var(--font-ryotext);
+  font-size: 0.8125rem;
+  color: var(--c-green);
+  line-height: 2;
+  white-space: pre-wrap;
+  padding: 0 22px;
+  margin-bottom: 36px;
+  font-weight: 500;
+}
+
+/* ── クロージング夜空 ── */
+.closing {
+  padding: 240px 24px;
+}
+.closingWindow {
+  width: 152px;
+  height: 152px;
+}
+
+/* ══════════════════════════════════════
+   PC（900px〜、リキッド）
+   ══════════════════════════════════════ */
+@media (min-width: 900px) {
+  .hero {
+    --edge-pad: clamp(24px, 4vw, 56px);
+    --edge-top: 24px;
+    --wordmark-top: clamp(96px, 13vh, 150px);
+    --wordmark-w: clamp(300px, 27vw, 400px);
+    --hero-gap: clamp(48px, 7vh, 68px);
+    --window-px: min(clamp(210px, 24vw, 330px), 36vh);
+    --tagline-gap: clamp(28px, 4vh, 40px);
+  }
+  .tagline {
+    font-size: clamp(1.125rem, 1.5vw, 1.375rem);
+  }
+  .annotation {
+    font-size: 0.8125rem;
+  }
+  .pillBtn {
+    padding: 11px 26px;
+    font-size: 0.8125rem;
+  }
+
+  /* 左右交互の非対称2カラム（見出し群と本文を対角に配置） */
+  .secInner {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    column-gap: clamp(48px, 7vw, 120px);
+    align-items: start;
+    padding: clamp(110px, 15vh, 170px) clamp(48px, 8vw, 140px);
+  }
+  .enHeading {
+    font-size: clamp(3.25rem, 6vw, 5.75rem);
+    text-align: left;
+  }
+  .star {
+    font-size: 1.5rem;
+    margin: 22px 0;
+    text-align: left;
+  }
+  .jaHeading {
+    font-size: 1.0625rem;
+    margin-bottom: 0;
+    text-align: left;
+  }
+  .secBody {
+    font-size: 0.9375rem;
+    line-height: 2.2;
+    padding: 0;
+    max-width: 34em;
+    margin-top: clamp(72px, 8vw, 128px);
+  }
+  .secRight .secHead {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .secRight .secBody {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ctaInner {
+    max-width: 768px;
+    padding: clamp(120px, 15vh, 180px) 48px;
+  }
+  .ctaHeading {
+    font-size: 1.375rem;
+    margin-bottom: 36px;
+  }
+  .ctaHeading br {
+    display: none;
+  }
+  .ctaBody {
+    font-size: 0.9375rem;
+    line-height: 2.1;
+    padding: 0;
+    margin-bottom: 44px;
+    text-align: center;
+  }
+
+  .closing {
+    padding: clamp(280px, 32vh, 360px) 24px;
+  }
+  .closingWindow {
+    width: clamp(152px, 17vw, 240px);
+    height: clamp(152px, 17vw, 240px);
+  }
+}

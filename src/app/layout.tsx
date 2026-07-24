@@ -61,6 +61,8 @@ export default function RootLayout({
             --c-green-light: #97bf95;
             --c-teal-green: #7fa999;
             --c-teal: #3e8a7a;
+            --c-teal-dark: #3b8374;
+            --c-teal-deep: #2f685c;
             --c-sage: #c6d2bf;
             --c-sage-light: #d3e1cc;
           }

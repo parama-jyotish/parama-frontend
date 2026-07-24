@@ -1,0 +1,16 @@
+.inner {
+  max-width: 512px;
+  margin: 0 auto;
+  padding: 20px 20px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* fluid（トップページ）: PC では左右いっぱいに使う */
+@media (min-width: 900px) {
+  .fluid {
+    max-width: none;
+    padding: 24px clamp(24px, 4vw, 56px) 0;
+  }
+}

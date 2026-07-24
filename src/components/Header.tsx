@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
+import styles from "./Header.module.css";
 
 interface HeaderProps {
   variant?: "home" | "interior";
@@ -11,6 +12,10 @@ interface HeaderProps {
   logoVisible?: boolean;
   ctaVisible?: boolean;
   ctaVariant?: "teal" | "citron" | "green" | "sage-light";
+  /** true なら PC(900px〜)で左右いっぱいに広げる（トップページ用） */
+  fluid?: boolean;
+  /** 指定時は CTA を遷移せずこのコールバックを呼ぶ（同一ルート内で状態を戻す用途） */
+  onCtaClick?: () => void;
 }
 
 export default function Header({
@@ -19,6 +24,8 @@ export default function Header({
   logoVisible,
   ctaVisible,
   ctaVariant = "teal",
+  fluid = false,
+  onCtaClick,
 }: HeaderProps) {
   const isHome = variant === "home";
 
@@ -41,14 +48,7 @@ export default function Header({
       style={{ background: "transparent" }}
     >
       <div
-        style={{
-          maxWidth: 512,
-          margin: "0 auto",
-          padding: "20px 20px 0",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+        className={fluid ? `${styles.inner} ${styles.fluid}` : styles.inner}
       >
         {/* 左肩：ロゴマーク */}
         <div style={{ width: 36, height: 36 }}>
@@ -127,6 +127,14 @@ export default function Header({
                       fontWeight: 500,
                       transition: "background 0.15s, color 0.15s",
                     }}
+                    onClick={
+                      onCtaClick
+                        ? (e) => {
+                            e.preventDefault();
+                            onCtaClick();
+                          }
+                        : undefined
+                    }
                     onMouseEnter={(e) => {
                       const el = e.currentTarget;
                       el.style.background = "var(--c-pink)";

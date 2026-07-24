@@ -10,17 +10,17 @@ export default function TermsPage() {
     <>
       <Header />
       <main className="flex-1 bg-background">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-          <h1 className="text-2xl font-normal text-foreground mb-8 text-center">
+        <div className="max-w-2xl mx-auto px-6 py-12 sm:py-20">
+          <h1 className="text-2xl font-normal text-c-teal mb-8 text-center">
             利用規約
           </h1>
-          <div className="bg-card-bg rounded-2xl p-8 sm:p-10 shadow-sm border border-border text-foreground/80 leading-relaxed space-y-8">
+          <div className="py-8 sm:py-10 px-[22px] text-c-teal-deep leading-relaxed space-y-8 font-ryotext text-[0.9375rem]">
             <p>
               本利用規約（以下「本規約」といいます）は、桂乃星術館（以下「当方」といいます）が提供するインド占星術（ジョーティシュ）に基づく鑑定サービス「PARAMA」（以下「本サービス」といいます）の利用条件を定めるものです。本サービスを利用されるすべての方（以下「利用者」といいます）は、本規約に同意したうえでご利用ください。
             </p>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第1条（適用範囲）
               </h2>
               <p>
@@ -29,7 +29,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第2条（本サービスの内容）
               </h2>
               <ol className="list-decimal pl-6 space-y-2">
@@ -43,7 +43,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第3条（サービスの法的性質）
               </h2>
               <p>
@@ -52,7 +52,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第4条（利用登録）
               </h2>
               <p>
@@ -61,7 +61,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第5条（未成年者の利用）
               </h2>
               <p>
@@ -70,7 +70,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第6条（鑑定結果の性質）
               </h2>
               <ol className="list-decimal pl-6 space-y-2">
@@ -87,7 +87,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第7条（鑑定の対象外事項）
               </h2>
               <p className="mb-3">
@@ -104,7 +104,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第8条（禁止事項）
               </h2>
               <p className="mb-3">
@@ -137,7 +137,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第9条（利用の停止・拒否）
               </h2>
               <p>
@@ -146,7 +146,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第10条（知的財産権）
               </h2>
               <p>
@@ -155,7 +155,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第11条（個人情報の取扱い）
               </h2>
               <p>
@@ -164,7 +164,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第12条（免責事項）
               </h2>
               <ol className="list-decimal pl-6 space-y-2">
@@ -181,7 +181,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第13条（損害賠償の制限）
               </h2>
               <p>
@@ -190,7 +190,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第14条（サービスの変更・停止・終了）
               </h2>
               <ol className="list-decimal pl-6 space-y-2">
@@ -204,7 +204,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第15条（規約の変更）
               </h2>
               <ol className="list-decimal pl-6 space-y-2">
@@ -221,7 +221,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第16条（準拠法）
               </h2>
               <p>
@@ -230,7 +230,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-medium text-foreground mb-3">
+              <h2 className="font-maruminshinano text-[0.9375rem] font-bold text-c-teal-dark mb-3">
                 第17条（合意管轄）
               </h2>
               <p>
@@ -240,7 +240,7 @@ export default function TermsPage() {
 
             <hr className="border-border" />
 
-            <p className="text-sm text-muted">制定日：2026年6月6日</p>
+            <p className="text-sm text-c-teal-green">制定日：2026年6月6日</p>
           </div>
         </div>
       </main>

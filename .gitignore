@@ -55,3 +55,14 @@ credentials/
 
 # User Bkup
 *.bkup
+
+# ローカル作業ファイル（2026-07-23 整理）
+session_log_*
+*.OLD
+*BKUP
+src/temp/
+public/images/notuse/
+修正点0629.txt
+writing_craft_guide.md
+PARAMA_frontend_実装指示.md
+src/app/legal/src/
