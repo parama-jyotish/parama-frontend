@@ -12,8 +12,6 @@ interface HeaderProps {
   logoVisible?: boolean;
   ctaVisible?: boolean;
   ctaVariant?: "teal" | "citron" | "green" | "sage-light";
-  /** true なら PC(900px〜)で左右いっぱいに広げる（トップページ用） */
-  fluid?: boolean;
   /** 指定時は CTA を遷移せずこのコールバックを呼ぶ（同一ルート内で状態を戻す用途） */
   onCtaClick?: () => void;
 }
@@ -24,7 +22,6 @@ export default function Header({
   logoVisible,
   ctaVisible,
   ctaVariant = "teal",
-  fluid = false,
   onCtaClick,
 }: HeaderProps) {
   const isHome = variant === "home";
@@ -47,9 +44,7 @@ export default function Header({
       className="fixed top-0 left-0 right-0 z-50"
       style={{ background: "transparent" }}
     >
-      <div
-        className={fluid ? `${styles.inner} ${styles.fluid}` : styles.inner}
-      >
+      <div className={styles.inner}>
         {/* 左肩：ロゴマーク */}
         <div style={{ width: 36, height: 36 }}>
           <AnimatePresence>

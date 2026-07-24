@@ -164,7 +164,6 @@ export default function Home() {
       {/* ── 固定ヘッダー ── */}
       <Header
         variant="home"
-        fluid
         logoVisible={logoVisible}
         ctaVisible={ctaVisible}
         ctaVariant={ctaVariant}

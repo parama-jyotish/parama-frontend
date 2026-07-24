@@ -138,6 +138,7 @@
   }
   .tagline {
     font-size: clamp(1.125rem, 1.5vw, 1.375rem);
+    line-height: 1.6;
   }
   .annotation {
     font-size: 0.8125rem;
@@ -153,29 +154,28 @@
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     column-gap: clamp(48px, 7vw, 120px);
-    align-items: start;
+    align-items: center;
     padding: clamp(110px, 15vh, 170px) clamp(48px, 8vw, 140px);
   }
   .enHeading {
     font-size: clamp(3.25rem, 6vw, 5.75rem);
-    text-align: left;
+    text-align: center;
   }
   .star {
     font-size: 1.5rem;
     margin: 22px 0;
-    text-align: left;
+    text-align: center;
   }
   .jaHeading {
     font-size: 1.0625rem;
     margin-bottom: 0;
-    text-align: left;
+    text-align: center;
   }
   .secBody {
     font-size: 0.9375rem;
     line-height: 2.2;
     padding: 0;
     max-width: 34em;
-    margin-top: clamp(72px, 8vw, 128px);
   }
   .secRight .secHead {
     grid-column: 2;
