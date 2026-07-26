@@ -1,0 +1,32 @@
+// ナクシャトラ 英字→カタカナ表記マップ
+// 出典: PARAMA_ナクシャトラ表記_v1_2.csv / PARAMA_ナクシャトラ表記ルール v1.1（表記は検証・確定済み）
+// キーは計算API（/calculate）が返す nakshatra.name の英字表記に一致する。
+export const NAKSHATRA_KATAKANA: Record<string, string> = {
+  Ashwini: "アシュヴィニー",
+  Bharani: "バラニー",
+  Krittika: "クリッティカー",
+  Rohini: "ローヒニー",
+  Mrigashira: "ムリガシラー",
+  Ardra: "アールドラー",
+  Punarvasu: "プナルヴァスー",
+  Pushya: "プシュヤ",
+  Ashlesha: "アーシュレーシャー",
+  Magha: "マガー",
+  "Purva Phalguni": "プールヴァ・ファルグニー",
+  "Uttara Phalguni": "ウッタラ・ファルグニー",
+  Hasta: "ハスタ",
+  Chitra: "チトラー",
+  Swati: "スヴァーティー",
+  Vishakha: "ヴィシャーカー",
+  Anuradha: "アヌラーダー",
+  Jyeshtha: "ジェーシュター",
+  Mula: "ムーラ",
+  "Purva Ashadha": "プールヴァ・アーシャーダー",
+  "Uttara Ashadha": "ウッタラ・アーシャーダー",
+  Shravana: "シュラヴァナ",
+  Dhanishta: "ダニシュター",
+  Shatabhisha: "シャタビシャー",
+  "Purva Bhadrapada": "プールヴァ・バードラパダー",
+  "Uttara Bhadrapada": "ウッタラ・バードラパダー",
+  Revati: "レーヴァティー",
+};

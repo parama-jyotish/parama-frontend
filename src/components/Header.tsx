@@ -36,7 +36,7 @@ export default function Header({
       : ctaColor === "green"
       ? { borderColor: "var(--c-green)", color: "var(--c-green)" }
       : ctaColor === "sage-light"
-      ? { borderColor: "var(--c-sage-light)", color: "var(--c-sage-light)" }
+      ? { borderColor: "#dae6d4", color: "#dae6d4" }
       : { borderColor: "var(--c-teal)", color: "var(--c-teal)" };
 
   return (
@@ -107,16 +107,19 @@ export default function Header({
                     border: "1px solid",
                     borderRadius: "9999px",
                     overflow: "hidden",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    backdropFilter: "blur(6px)",
+                    WebkitBackdropFilter: "blur(6px)",
                     ...ctaColorStyle,
                   }}
                 >
                   <Link
                     href="/free/lagna"
+                    className={styles.ctaLink}
                     style={{
                       display: "block",
                       padding: "5px 12px",
                       fontSize: "0.645rem",
-                      color: "inherit",
                       textDecoration: "none",
                       fontFamily: "var(--font-noto-sans-jp), sans-serif",
                       fontWeight: 500,
@@ -130,16 +133,6 @@ export default function Header({
                           }
                         : undefined
                     }
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget;
-                      el.style.background = "var(--c-pink)";
-                      el.style.color = "var(--c-ink)";
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget;
-                      el.style.background = "transparent";
-                      el.style.color = "inherit";
-                    }}
                   >
                     ラグナを知る
                   </Link>

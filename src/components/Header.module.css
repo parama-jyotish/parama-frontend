@@ -10,7 +10,15 @@
 /* PC では左右いっぱいに使う（ロゴ左端・CTA右端） */
 @media (min-width: 900px) {
   .inner {
-    max-width: none;
-    padding: 24px clamp(24px, 4vw, 56px) 0;
+    max-width: 1320px;
+    padding: 24px 54px 0;
+  }
+}
+
+/* CTA ボタン内リンク: ホバーで塗り反転（再描画に影響されない CSS 方式） */
+@media (hover: hover) {
+  .ctaLink:hover {
+    background: var(--c-pink);
+    color: var(--c-ink);
   }
 }

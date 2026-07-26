@@ -57,7 +57,7 @@ export default function RootLayout({
             --c-violet-2: #5841bb;
             --c-ink: #311c7e;
             --c-pink: #d493a9;
-            --c-green: #79ad76;
+            --c-green: #5c9c78;
             --c-green-light: #97bf95;
             --c-teal-green: #7fa999;
             --c-teal: #3e8a7a;

@@ -11,7 +11,7 @@ export default function Footer() {
         zIndex: 2,
       }}
     >
-      <div className="max-w-xl mx-auto px-6 pt-14">
+      <div className="max-w-lg min-[900px]:max-w-[1320px] mx-auto px-6 min-[900px]:px-[54px] pt-14">
         {/* メニューリンク */}
         <nav
           className="flex flex-col gap-4"

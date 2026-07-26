@@ -95,7 +95,7 @@ export default function TokushohoPage() {
     <>
       <Header />
       <main className="flex-1 bg-background">
-        <div className="max-w-2xl mx-auto px-6 py-12 sm:py-20">
+        <div className="max-w-lg min-[900px]:max-w-2xl mx-auto px-6 py-12 sm:py-20">
           <h1 className="text-2xl font-normal text-c-teal mb-8 text-center">
             特定商取引法に基づく表記
           </h1>

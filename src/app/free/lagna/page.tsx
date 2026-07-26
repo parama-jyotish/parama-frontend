@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { CITIES, findCity } from "@/data/cities";
 import { LAGNA_RESULTS } from "@/data/lagna-results";
+import { NAKSHATRA_KATAKANA } from "@/data/nakshatra-katakana";
 
 const TIME_PRESETS = [
   { label: "深夜", hour: 1, minute: 30 },
@@ -39,18 +40,6 @@ const selectStyle: React.CSSProperties = {
   fontSize: "0.875rem",
   color: "var(--c-teal-deep)",
   appearance: "auto",
-};
-
-const primaryBtn: React.CSSProperties = {
-  width: "100%",
-  height: 50,
-  background: "var(--c-pink)",
-  color: "var(--c-ink)",
-  borderRadius: "9999px",
-  fontSize: "1rem",
-  fontWeight: 500,
-  border: "none",
-  cursor: "pointer",
 };
 
 export default function LagnaPage() {
@@ -198,7 +187,7 @@ export default function LagnaPage() {
             >
               あなたのラグナを計算しています...
             </p>
-            <p style={{ fontSize: "0.8125rem", color: "var(--muted)", marginTop: 8 }}>
+            <p style={{ fontSize: "0.8125rem", color: "#7fa999", marginTop: 8 }}>
               3,000年を超える星の知恵にアクセスしています
             </p>
           </div>
@@ -225,8 +214,8 @@ export default function LagnaPage() {
           }}
         >
           <div
+            className="max-w-lg min-[900px]:max-w-2xl"
             style={{
-              maxWidth: 672,
               margin: "0 auto",
               padding: "72px 24px 96px",
             }}
@@ -294,6 +283,7 @@ export default function LagnaPage() {
                 borderRadius: 10,
                 padding: "28px 24px",
                 marginBottom: 32,
+                background: "var(--c-cream-2)",
               }}
             >
               {lagnaData?.description ? (
@@ -329,7 +319,12 @@ export default function LagnaPage() {
               {[
                 { label: "太陽星座", value: result.sun_rashi },
                 { label: "月星座", value: result.moon_rashi },
-                { label: "月のナクシャトラ", value: result.moon_nakshatra },
+                {
+                  label: "月のナクシャトラ",
+                  value:
+                    NAKSHATRA_KATAKANA[result.moon_nakshatra] ??
+                    result.moon_nakshatra,
+                },
               ].map(({ label, value }) => (
                 <div
                   key={label}
@@ -407,7 +402,7 @@ export default function LagnaPage() {
             <div style={{ textAlign: "center" }}>
               <button
                 onClick={handleRetry}
-                style={primaryBtn}
+                className="pillBtn"
               >
                 もう一度計算する
               </button>
@@ -451,7 +446,7 @@ export default function LagnaPage() {
             <p
               style={{
                 fontFamily: "var(--font-maruminshinano)",
-                fontSize: "0.9375rem",
+                fontSize: "0.875rem",
                 color: "var(--c-teal)",
                 lineHeight: 1.7,
                 marginLeft: 48,
@@ -693,7 +688,7 @@ export default function LagnaPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              style={primaryBtn}
+              className="pillBtn"
             >
               計算する
             </button>

@@ -62,6 +62,7 @@
   --font-inria: "inria-serif", serif;
   --font-maruminshinano: "kinuta-maruminshinano-stdn", serif;
   --font-ryotext: "ryo-text-plusn", serif;
+  --font-shuei: "dnp-shuei-mgothic-std", sans-serif;
 }
 
 body {
@@ -78,4 +79,32 @@ html {
 ::selection {
   background: var(--c-teal);
   color: #fff;
+}
+
+/* 共有 CTA ピルボタン（トップ／ラグナ算出ページ共通） */
+.pillBtn {
+  display: block;
+  width: fit-content;
+  min-width: 252px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 15px 12px;
+  background: var(--c-pink);
+  color: #4c32ae;
+  border-radius: 9999px;
+  font-family: var(--font-shuei);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+@media (hover: hover) {
+  .pillBtn:hover {
+    filter: brightness(1.05);
+  }
 }

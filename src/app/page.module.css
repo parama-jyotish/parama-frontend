@@ -18,33 +18,17 @@
 }
 
 .tagline {
-  font-family: var(--font-maruminshinano);
+  font-family: var(--font-shuei);
+  font-weight: 600;
   color: var(--c-violet);
   font-size: 1rem;
-  line-height: 1;
+  line-height: 1.5;
 }
 
 .annotation {
   color: var(--c-violet-2);
   font-size: 0.72rem;
   margin-top: 14px;
-}
-
-.pillBtn {
-  display: inline-block;
-  background: var(--c-pink);
-  color: var(--c-ink);
-  padding: 9px 20px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition: filter 0.15s;
-}
-@media (hover: hover) {
-  .pillBtn:hover {
-    filter: brightness(0.95);
-  }
 }
 
 /* ── コンテンツセクション（Insights / Timing / Nature / Wisdom） ── */
@@ -73,16 +57,17 @@
   text-align: center;
 }
 .jaHeading {
-  font-family: var(--font-maruminshinano);
-  font-size: 0.9375rem;
+  font-family: var(--font-shuei);
+  font-size: 1rem;
   line-height: 1.7;
   margin-bottom: 28px;
   text-align: center;
-  font-weight: 700;
+  font-weight: 600;
 }
 .secBody {
-  font-family: var(--font-ryotext);
-  font-size: 0.8125rem;
+  font-family: var(--font-shuei);
+  font-weight: 400;
+  font-size: 0.875rem;
   line-height: 2;
   white-space: pre-wrap;
   padding: 0 22px;
@@ -95,23 +80,23 @@
   padding: 80px 24px;
 }
 .ctaHeading {
-  font-family: var(--font-maruminshinano);
+  font-family: var(--font-shuei);
   font-size: 0.9375rem;
   color: var(--c-green);
   line-height: 1.7;
   margin-bottom: 28px;
   text-align: center;
-  font-weight: 700;
+  font-weight: 600;
 }
 .ctaBody {
-  font-family: var(--font-ryotext);
-  font-size: 0.8125rem;
+  font-family: var(--font-shuei);
+  font-size: 0.875rem;
   color: var(--c-green);
   line-height: 2;
   white-space: pre-wrap;
   padding: 0 22px;
   margin-bottom: 36px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* ── クロージング夜空 ── */
@@ -128,7 +113,8 @@
    ══════════════════════════════════════ */
 @media (min-width: 900px) {
   .hero {
-    --edge-pad: clamp(24px, 4vw, 56px);
+    /* ロゴ左端を 1320px 中央ボックス左端 +54px に合わせる（ヘッダー/フッターと一致） */
+    --edge-pad: calc(max(0px, (100% - 1320px) / 2) + 54px);
     --edge-top: 24px;
     --wordmark-top: clamp(96px, 13vh, 150px);
     --wordmark-w: clamp(300px, 27vw, 400px);
@@ -143,14 +129,10 @@
   .annotation {
     font-size: 0.8125rem;
   }
-  .pillBtn {
-    padding: 11px 26px;
-    font-size: 0.8125rem;
-  }
 
   /* 左右交互の非対称2カラム（見出し群と本文を対角に配置） */
   .secInner {
-    max-width: none;
+    max-width: 1320px;
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     column-gap: clamp(48px, 7vw, 120px);

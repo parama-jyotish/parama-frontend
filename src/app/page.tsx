@@ -255,7 +255,7 @@ export default function Home() {
 
           <Link
             href="/free/lagna"
-            className={styles.pillBtn}
+            className="pillBtn"
             style={{ marginTop: 28 }}
           >
             ラグナを知る（無料・登録なし）
@@ -322,14 +322,14 @@ export default function Home() {
         align="left"
         bg="var(--c-rose)"
         enHeading="Nature"
-        enColor="var(--c-sage)"
-        starColor="var(--c-sage)"
+        enColor="#cfd9c9"
+        starColor="#dae6d4"
         jaHeading="自分の特性がわかる"
-        jaColor="var(--c-sage-light)"
+        jaColor="#cfd9c9"
         body={
           "あなたらしい性格や性分、行動のパターンがどこから来るのか、読み解きます。自分の反応を、仕組みとして理解できるようになります。"
         }
-        bodyColor="var(--c-sage-light)"
+        bodyColor="#dae6d4"
       />
 
       {/* ══════════════════════════════════════
@@ -370,7 +370,7 @@ export default function Home() {
           </p>
 
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <Link href="/free/lagna" className={styles.pillBtn}>
+            <Link href="/free/lagna" className="pillBtn">
               ラグナを知る（無料・登録なし）
             </Link>
           </div>
