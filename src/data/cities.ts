@@ -25,6 +25,31 @@ export const CITIES: Record<string, { lat: number; lng: number }> = {
 export const DEFAULT_CITY = { lat: 35.6762, lng: 139.6503 }; // 東京
 
 export function findCity(name: string): { lat: number; lng: number } {
+  // 緯経度入力（例: "35.68, 139.76"）。全角数字・区切りの混入や過剰な小数桁も許容。
+  const normalized = name
+    // 全角数字 → 半角
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    // 和文読点・全角カンマ → 半角カンマ
+    .replace(/[、，]/g, ",")
+    // 全角ピリオド → 半角ピリオド
+    .replace(/．/g, ".")
+    // 全角マイナス → 半角マイナス
+    .replace(/[－−]/g, "-")
+    // 全角スペース → 半角スペース
+    .replace(/　/g, " ");
+  const coordMatch = normalized.match(
+    /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/
+  );
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      // 小数点以下4桁に丸め（Google 座標の長い桁対策。浮動小数点誤差を避けるため toFixed を使用）
+      const cut = (v: number) => parseFloat(v.toFixed(4));
+      return { lat: cut(lat), lng: cut(lng) };
+    }
+  }
+
   // 完全一致
   if (CITIES[name]) return CITIES[name];
 

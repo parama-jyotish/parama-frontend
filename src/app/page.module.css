@@ -101,7 +101,21 @@
 
 /* ── クロージング夜空 ── */
 .closing {
-  padding: 240px 24px;
+  padding: 0 24px;
+}
+.closingSpacer {
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.closingText {
+  font-family: var(--font-shuei);
+  font-weight: 400;
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.9;
+  text-align: center;
 }
 .closingWindow {
   width: 152px;
@@ -188,7 +202,10 @@
   }
 
   .closing {
-    padding: clamp(280px, 32vh, 360px) 24px;
+    padding: 0 24px;
+  }
+  .closingSpacer {
+    height: clamp(280px, 32vh, 360px);
   }
   .closingWindow {
     width: clamp(152px, 17vw, 240px);

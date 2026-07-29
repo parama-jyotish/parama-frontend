@@ -193,7 +193,7 @@ export default function Home() {
         >
           <Image
             src="/images/logo-mark.svg"
-            alt="PARAMA"
+            alt="Parama"
             width={36}
             height={36}
           />
@@ -292,7 +292,7 @@ export default function Home() {
         jaHeading="パラマでわかること"
         jaColor="var(--c-green)"
         body={
-          "インド占星術は、なぜそう感じ、そうしてしまうかを言語化するのが得意。\n自分自身や、置かれている状況を深く知りたいあなたに、そっと寄り添い、星からのまなざしをお届けします。"
+          "インド占星術は、なぜそう感じ、そうしてしまうかを言語化することが得意です。\n自分自身や、置かれている状況を深く知りたいあなたに、そっと寄り添い、星からのまなざしをお届けします。"
         }
         bodyColor="var(--c-green)"
       />
@@ -327,7 +327,7 @@ export default function Home() {
         jaHeading="自分の特性がわかる"
         jaColor="#cfd9c9"
         body={
-          "あなたらしい性格や性分、行動のパターンがどこから来るのか、読み解きます。自分の反応を、仕組みとして理解できるようになります。"
+          "あなたらしい性格や性分、行動のパターンがどこから来るのか、読み解きます。自分の反応を、仕組みとしてとらえることができます。"
         }
         bodyColor="#dae6d4"
       />
@@ -366,7 +366,7 @@ export default function Home() {
           </p>
 
           <p className={styles.ctaBody}>
-            {"あなたの基本的な性質や能力が映し出されているのがラグナ。\n生まれた瞬間の東の地平線に昇っていた星座をそう呼んでいます。\n以下ではラグナだけでなく、太陽星座、月星座、月のナクシャトラもあわせてお調べします。\n生まれた日・時刻・場所を入力するだけで、すぐに結果が出ます。"}
+            {"あなたの基本的な性質や能力が映し出されているのがラグナ。\n生まれた瞬間の東の地平線に昇っていた星座をそう呼んでいます。\n生まれた日・時刻・場所を入力するだけで、すぐに結果が出せます。"}
           </p>
 
           <div style={{ display: "flex", justifyContent: "center" }}>
@@ -388,10 +388,15 @@ export default function Home() {
           position: "relative",
           zIndex: 2,
           display: "flex",
-          justifyContent: "center",
+          flexDirection: "column",
           alignItems: "center",
         }}
       >
+        {/* 上テキスト（上アキの天地中央） */}
+        <div className={styles.closingSpacer}>
+          <p className={styles.closingText}>自分に出会う旅</p>
+        </div>
+
         {/* cta-sky.jpg 中央配置（モバイル 152×152、PC はリキッド） */}
         <div
           className={styles.closingWindow}
@@ -406,6 +411,11 @@ export default function Home() {
             alt=""
             style={{ objectFit: "cover" }}
           />
+        </div>
+
+        {/* 下：✶（下アキの天地中央） */}
+        <div className={styles.closingSpacer}>
+          <p className={styles.closingText}>✶</p>
         </div>
       </section>
 

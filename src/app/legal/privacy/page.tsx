@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "プライバシーポリシー | PARAMA",
+  title: "プライバシーポリシー | Parama",
 };
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           </h1>
           <div className="py-8 sm:py-10 px-[22px] text-c-teal-deep leading-relaxed space-y-8 font-ryotext text-[0.9375rem]">
             <p>
-              桂乃星術館（以下「当サービス」といいます）は、インド占星術（ジョーティシュ）に基づく無料のラグナ簡易判定「インド占星術パラマ（PARAMA）」（以下「本サービス」といいます）を提供するにあたり、ご利用者の個人情報の保護を重要な責務と考えています。本ポリシーは、本サービスにおける個人情報の取得、利用、管理に関する方針を定めるものです。
+              桂乃星術館（以下「当サービス」といいます）は、インド占星術（ジョーティシュ）に基づく無料のラグナ簡易判定「インド占星術パラマ（Parama）」（以下「本サービス」といいます）を提供するにあたり、ご利用者の個人情報の保護を重要な責務と考えています。本ポリシーは、本サービスにおける個人情報の取得、利用、管理に関する方針を定めるものです。
             </p>
 
             <section>

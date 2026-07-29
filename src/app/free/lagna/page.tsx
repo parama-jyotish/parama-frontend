@@ -681,6 +681,8 @@ export default function LagnaPage() {
                 }}
               >
                 一覧にない都市は、最も近い都市名を入力してください。
+                <br />
+                緯経度でも調べられます（例：35.68, 139.76）
               </p>
             </fieldset>
 

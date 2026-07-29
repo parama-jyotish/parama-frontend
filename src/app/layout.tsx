@@ -10,7 +10,7 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "PARAMA（パラマ）| インド占星術で自分らしさの手がかりを",
+  title: "Parama（パラマ）| インド占星術で自分らしさの手がかりを",
   description:
     "3,000年以上の歴史を持つインド占星術（ジョーティシュ）で、あなたの本質と人生の流れを読み解きます。まずは無料のラグナ診断から。",
   robots: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     follow: false,
   },
   openGraph: {
-    title: "PARAMA（パラマ）| インド占星術",
+    title: "Parama（パラマ）| インド占星術",
     description:
       "3,000年以上の歴史を持つインド占星術で、あなたの本質と人生の流れを読み解きます。",
     url: "https://parama-jyotish.jp",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "PARAMA（パラマ）| インド占星術",
+    title: "Parama（パラマ）| インド占星術",
     description:
       "3,000年以上の歴史を持つインド占星術で、あなたの本質と人生の流れを読み解きます。",
   },

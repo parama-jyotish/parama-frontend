@@ -66,7 +66,7 @@ export default function Header({
                   >
                     <Image
                       src="/images/logo-mark.svg"
-                      alt="PARAMA"
+                      alt="Parama"
                       width={36}
                       height={36}
                     />
@@ -75,7 +75,7 @@ export default function Header({
                   <Link href="/" className="block w-9 h-9">
                     <Image
                       src="/images/logo-mark.svg"
-                      alt="PARAMA"
+                      alt="Parama"
                       width={36}
                       height={36}
                     />

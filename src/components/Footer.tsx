@@ -29,7 +29,7 @@ export default function Footer() {
             className="transition-opacity hover:opacity-60"
             style={{ color: "var(--c-cream)" }}
           >
-            ラグナ無料診断
+            ラグナ簡易判定
           </Link>
         </nav>
 

@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata = {
-  title: "利用規約 | PARAMA",
+  title: "利用規約 | Parama",
 };
 
 export default function TermsPage() {
@@ -16,7 +16,7 @@ export default function TermsPage() {
           </h1>
           <div className="py-8 sm:py-10 px-[22px] text-c-teal-deep leading-relaxed space-y-8 font-ryotext text-[0.9375rem]">
             <p>
-              本利用規約（以下「本規約」といいます）は、桂乃星術館（以下「当方」といいます）が提供するインド占星術（ジョーティシュ）に基づく鑑定サービス「PARAMA」（以下「本サービス」といいます）の利用条件を定めるものです。本サービスを利用されるすべての方（以下「利用者」といいます）は、本規約に同意したうえでご利用ください。
+              本利用規約（以下「本規約」といいます）は、桂乃星術館（以下「当方」といいます）が提供するインド占星術（ジョーティシュ）に基づく鑑定サービス「Parama」（以下「本サービス」といいます）の利用条件を定めるものです。本サービスを利用されるすべての方（以下「利用者」といいます）は、本規約に同意したうえでご利用ください。
             </p>
 
             <section>
