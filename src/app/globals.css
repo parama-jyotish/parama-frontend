@@ -60,9 +60,11 @@
   /* フォント役割 */
   --font-sans: var(--font-noto-sans-jp), "Noto Sans JP", sans-serif;
   --font-inria: "inria-serif", serif;
-  --font-maruminshinano: "kinuta-maruminshinano-stdn", serif;
-  --font-ryotext: "ryo-text-plusn", serif;
+  /* サイト全体を秀英丸ゴシックに移行。旧: kinuta-maruminshinano-stdn / ryo-text-plusn。
+     変数名は既存インライン参照との互換のため維持し、定義のみ shuei に向ける。 */
   --font-shuei: "dnp-shuei-mgothic-std", sans-serif;
+  --font-maruminshinano: var(--font-shuei);
+  --font-ryotext: var(--font-shuei);
 }
 
 body {
