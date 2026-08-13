@@ -22,7 +22,13 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LogoWordmark from "@/components/LogoWordmark";
 import { CITIES } from "@/data/cities";
-import { normalizeBirthPlace } from "@/lib/birth-place";
+import {
+  resolveBirthPlace,
+  municipalityLabel,
+  municipalityValue,
+  type BirthPlaceResolution,
+  type Municipality,
+} from "@/lib/birth-place";
 
 // ── 定数 ──────────────────────────────────────────────────
 // 出生時刻の時間帯プリセット（/free/lagna と同一）
@@ -135,6 +141,14 @@ const fieldErrorStyle: React.CSSProperties = {
   marginTop: 6,
 };
 
+/** 出生地が確定したことの表示（「○○ として計算します」）。 */
+const placeConfirmStyle: React.CSSProperties = {
+  fontSize: "0.8125rem",
+  color: "var(--c-teal)",
+  lineHeight: 1.7,
+  marginTop: 8,
+};
+
 // ── ヘルパー ──────────────────────────────────────────────
 const FIELD_LABELS: Record<FieldKey, string> = {
   birth: "生年月日",
@@ -173,6 +187,25 @@ function mapValidationErrors(detail: unknown): FieldErrors {
   return errors;
 }
 
+/**
+ * 送信する `birth_place` を決める。決まらない場合（候補未選択・解決不能）は null。
+ * 市区町村マスターで解決できたものは「緯度,経度」で送り、Nominatim には逆引きだけさせる。
+ */
+function birthPlaceValue(
+  place: BirthPlaceResolution,
+  selected: Municipality | null
+): string | null {
+  switch (place.kind) {
+    case "coords":
+    case "fallback":
+      return place.value;
+    case "ambiguous":
+      return selected ? municipalityValue(selected) : null;
+    case "unknown":
+      return null;
+  }
+}
+
 /** LINE 組の遷移先（エルメ URL + cid1〜cid5）。未設定・不正な URL の場合は null。 */
 function buildElmeUrl(result: StartResponse, entrySource: string): string | null {
   const base = process.env.NEXT_PUBLIC_ELME_LINE_URL;
@@ -207,6 +240,8 @@ export default function StartClient() {
   const [showTimePresets, setShowTimePresets] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [birthPlace, setBirthPlace] = useState("");
+  const [placeResolution, setPlaceResolution] = useState<BirthPlaceResolution | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<Municipality | null>(null);
   const [category, setCategory] = useState<CategoryId | "">("");
   const [deliveryChannel, setDeliveryChannel] = useState<DeliveryChannel | "">("");
   const [email, setEmail] = useState("");
@@ -274,6 +309,23 @@ export default function StartClient() {
     };
   }, [pageState]);
 
+  // 出生地の解決（入力が止まってから照合する。廃止された市区町村は必要になった時点で取りに行く）
+  // 直前の解決結果は入力欄の onChange で捨てている（効果の中で同期的に setState しないため）
+  useEffect(() => {
+    const raw = birthPlace.trim();
+    if (!raw) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      resolveBirthPlace(raw).then((resolution) => {
+        if (!cancelled) setPlaceResolution(resolution);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [birthPlace]);
+
   function handlePresetClick(
     preset: { label: string; hour: number; minute: number },
     unknown = false
@@ -288,18 +340,27 @@ export default function StartClient() {
     Boolean(year && month && day) &&
     (isTimeUnknown || (hour !== "" && minute !== "")) &&
     birthPlace.trim() !== "" &&
+    placeResolution !== null &&
+    birthPlaceValue(placeResolution, selectedPlace) !== null &&
     category !== "" &&
     deliveryChannel !== "" &&
     (deliveryChannel !== "email" || email.trim() !== "") &&
     turnstileToken !== null;
 
-  function validate(): FieldErrors {
+  function validate(place: BirthPlaceResolution | null): FieldErrors {
     const errors: FieldErrors = {};
     if (!year || !month || !day) errors.birth = "生年月日をお選びください。";
     if (!isTimeUnknown && (hour === "" || minute === ""))
       errors.time =
         "出生時刻をお選びください。わからない場合は「出生時刻がわからない方」からお選びいただけます。";
-    if (birthPlace.trim() === "") errors.place = "出生地をご入力ください。";
+    if (birthPlace.trim() === "" || !place) errors.place = "出生地をご入力ください。";
+    else if (place.kind === "ambiguous" && !selectedPlace)
+      errors.place = "同じ名前の市区町村が複数あります。下からお選びください。";
+    else if (place.kind === "unknown")
+      errors.place =
+        place.reason === "lookup-failed"
+          ? "出生地を確認できませんでした。通信環境をご確認のうえ、再度お試しください。"
+          : "この地名は見つかりませんでした。現在の市区町村名でお試しください（例：東京都西東京市、仙台市）。";
     if (category === "") errors.category = "テーマをひとつお選びください。";
     if (deliveryChannel === "") errors.delivery = "受取方法をお選びください。";
     if (deliveryChannel === "email") {
@@ -314,10 +375,21 @@ export default function StartClient() {
   }
 
   async function handleSubmit() {
-    const errors = validate();
-    setFieldErrors(errors);
     setFormError(null);
+
+    // 入力直後に押された場合はデバウンス待ちの解決がまだ無いので、ここで確定させる
+    let place = placeResolution;
+    if (!place && birthPlace.trim()) {
+      place = await resolveBirthPlace(birthPlace.trim());
+      setPlaceResolution(place);
+    }
+
+    const errors = validate(place);
+    setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
+
+    // validate を通っていれば必ず値が決まる
+    const resolvedPlace = birthPlaceValue(place!, selectedPlace)!;
 
     setPageState("loading");
 
@@ -333,8 +405,8 @@ export default function StartClient() {
           hour: isTimeUnknown ? 12 : Number(hour),
           minute: isTimeUnknown ? 0 : Number(minute),
           time_unknown: isTimeUnknown,
-          // 座標は座標文字列に、住所は市区町村までに縮約して送る（Nominatim が解決できる形）
-          birth_place: normalizeBirthPlace(birthPlace),
+          // 市区町村マスターで解決できたものは「緯度,経度」。辞書外は文字列のまま
+          birth_place: resolvedPlace,
           category,
           delivery_channel: deliveryChannel,
           email: deliveryChannel === "email" ? email.trim() : null,
@@ -943,7 +1015,11 @@ export default function StartClient() {
               <input
                 type="text"
                 value={birthPlace}
-                onChange={(e) => setBirthPlace(e.target.value)}
+                onChange={(e) => {
+                  setBirthPlace(e.target.value);
+                  setPlaceResolution(null);
+                  setSelectedPlace(null);
+                }}
                 placeholder="例：仙台市、東京都世田谷区"
                 list="start-city-list"
                 className="placeholder:text-c-teal-green"
@@ -957,8 +1033,61 @@ export default function StartClient() {
               <p style={helpTextStyle}>
                 市区町村までで十分です。住所を貼り付けても、番地以下は送信しません。
                 <br />
-                緯経度でも調べられます（例：35.68, 139.76）
+                昔の市町村名（例：保谷市）や緯経度（例：35.68, 139.76）でも調べられます。
               </p>
+
+              {/* 一意に決まったとき。どこで計算するかを必ず見せる */}
+              {placeResolution?.kind === "coords" && (
+                <p style={placeConfirmStyle}>
+                  <strong>{placeResolution.label}</strong> として計算します
+                </p>
+              )}
+              {selectedPlace && (
+                <p style={placeConfirmStyle}>
+                  <strong>{municipalityLabel(selectedPlace)}</strong> として計算します
+                </p>
+              )}
+
+              {/* 同名の市区町村が複数あるとき。黙ってどれかに寄せず、必ず選んでもらう */}
+              {placeResolution?.kind === "ambiguous" && !selectedPlace && (
+                <div style={{ marginTop: 10 }}>
+                  <p style={{ fontSize: "0.75rem", color: "var(--c-teal-green)", marginBottom: 8 }}>
+                    同じ名前の市区町村が{placeResolution.candidates.length}つあります。お選びください。
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {placeResolution.candidates.map((candidate) => (
+                      <button
+                        key={`${candidate.pref}${candidate.county}${candidate.name}`}
+                        type="button"
+                        onClick={() => setSelectedPlace(candidate)}
+                        style={{
+                          minHeight: 44,
+                          padding: "10px 14px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          background: "white",
+                          color: "var(--c-teal-deep)",
+                          fontSize: "0.8125rem",
+                          textAlign: "left",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {municipalityLabel(candidate)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 解決できない地名は送信前に知らせる（送ってしまうと誤った場所で計算されるため） */}
+              {placeResolution?.kind === "unknown" && !fieldErrors.place && (
+                <p style={fieldErrorStyle}>
+                  {placeResolution.reason === "lookup-failed"
+                    ? "出生地を確認できませんでした。通信環境をご確認のうえ、少し時間をおいてお試しください。"
+                    : "この地名は見つかりませんでした。現在の市区町村名でお試しください（例：東京都西東京市、仙台市）。"}
+                </p>
+              )}
+
               {fieldErrors.place && <p style={fieldErrorStyle}>{fieldErrors.place}</p>}
             </fieldset>
 
