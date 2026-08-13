@@ -1,3 +1,5 @@
+// 座標は Nominatim の行政区画ノード（「○○市」で検索）と突合済み（2026-08-13）。
+// jyoti-app/test_reading.py に同名の CITIES があり、内容がドリフトしている（要同期・別セッション管轄）。
 export const CITIES: Record<string, { lat: number; lng: number }> = {
   東京: { lat: 35.6762, lng: 139.6503 },
   大阪: { lat: 34.6937, lng: 135.5023 },
@@ -11,10 +13,12 @@ export const CITIES: Record<string, { lat: number; lng: number }> = {
   広島: { lat: 34.3853, lng: 132.4553 },
   さいたま: { lat: 35.8617, lng: 139.6455 },
   千葉: { lat: 35.6073, lng: 140.1063 },
-  新潟: { lat: 37.9026, lng: 139.0232 },
+  北九州: { lat: 33.883, lng: 130.8749 },
+  堺: { lat: 34.5737, lng: 135.4829 },
+  新潟: { lat: 37.9164, lng: 139.0365 },
   浜松: { lat: 34.7108, lng: 137.7261 },
   静岡: { lat: 34.9756, lng: 138.3828 },
-  岡山: { lat: 34.6617, lng: 133.935 },
+  岡山: { lat: 34.6554, lng: 133.9195 },
   熊本: { lat: 32.8032, lng: 130.7079 },
   鹿児島: { lat: 31.5966, lng: 130.5571 },
   那覇: { lat: 26.2124, lng: 127.6809 },

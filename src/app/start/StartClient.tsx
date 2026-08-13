@@ -22,6 +22,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LogoWordmark from "@/components/LogoWordmark";
 import { CITIES } from "@/data/cities";
+import { normalizeBirthPlace } from "@/lib/birth-place";
 
 // ── 定数 ──────────────────────────────────────────────────
 // 出生時刻の時間帯プリセット（/free/lagna と同一）
@@ -332,7 +333,8 @@ export default function StartClient() {
           hour: isTimeUnknown ? 12 : Number(hour),
           minute: isTimeUnknown ? 0 : Number(minute),
           time_unknown: isTimeUnknown,
-          birth_place: birthPlace.trim(),
+          // 座標は座標文字列に、住所は市区町村までに縮約して送る（Nominatim が解決できる形）
+          birth_place: normalizeBirthPlace(birthPlace),
           category,
           delivery_channel: deliveryChannel,
           email: deliveryChannel === "email" ? email.trim() : null,
@@ -953,7 +955,9 @@ export default function StartClient() {
                 ))}
               </datalist>
               <p style={helpTextStyle}>
-                市区町村までご入力ください。一覧にない場合は、最も近い市区町村名でも計算できます。
+                市区町村までで十分です。住所を貼り付けても、番地以下は送信しません。
+                <br />
+                緯経度でも調べられます（例：35.68, 139.76）
               </p>
               {fieldErrors.place && <p style={fieldErrorStyle}>{fieldErrors.place}</p>}
             </fieldset>
