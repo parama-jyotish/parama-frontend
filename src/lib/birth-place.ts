@@ -279,8 +279,9 @@ function fromMatches(matches: Municipality[]): BirthPlaceResolution | null {
  * 出生地入力を解決する。
  *
  * 現行の市区町村マスター → （日本の住所らしければ）廃止された市区町村 の順に照合する。
- * どちらにも無く、かつ日本の住所として書かれている場合は送信せずにエラーとする。
+ * どちらにも無い場合、**都道府県まで書かれているもの**だけを送信せずにエラーとする。
  * 「東京都保谷市」を素通しすると Nominatim が京都の東大路通を返し、誤りに気づけないため。
+ * 都道府県が無いものを一律に弾くと「韓国釜山市」のような漢字圏の海外地名まで使えなくなる。
  */
 export async function resolveBirthPlace(raw: string): Promise<BirthPlaceResolution> {
   const normalized = prepare(raw);
@@ -313,5 +314,13 @@ export async function resolveBirthPlace(raw: string): Promise<BirthPlaceResoluti
   }
   // 同じ長さで当たったときは現行を優先する（「さいたま市大宮区」と旧「大宮市」など）
   const best = historical.length > current.length ? historical.matches : current.matches;
-  return fromMatches(best) ?? { kind: "unknown", reason: "not-found" };
+  const resolved = fromMatches(best);
+  if (resolved) return resolved;
+
+  // どこにも無かった。都道府県まで書かれているものだけをエラーにする。
+  // 「韓国釜山市」「台湾台北市」のような漢字圏の海外の地名は、日本の住所と字面が
+  // 見分けられないため、都道府県が無いものは従来どおり Nominatim へ委ねる。
+  return addressMatch?.[1]
+    ? { kind: "unknown", reason: "not-found" }
+    : { kind: "fallback", value: normalizeBirthPlace(raw) };
 }

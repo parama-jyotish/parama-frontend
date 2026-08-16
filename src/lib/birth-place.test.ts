@@ -247,9 +247,25 @@ describe("辞書に無い入力", () => {
     }
   });
 
-  test("日本の住所として書かれていて解決できないものは送らずエラー", async () => {
+  test("都道府県まで書かれていて解決できないものは送らずエラー", async () => {
     for (const input of ["東京都せたがや区", "架空県架空市", "東京都存在しない町"]) {
       assert.equal(await resolved(input), "unknown not-found", input);
+    }
+  });
+
+  test("漢字圏の海外の地名は弾かずに送る", async () => {
+    // 「釜山市」「台北市」は日本の住所と字面で見分けられない。都道府県が無いので素通しする
+    for (const input of ["韓国釜山市", "中国北京市朝陽区", "台湾台北市", "ソウル特別市", "セブ市"]) {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "fallback", `${input} → ${await resolved(input)}`);
+    }
+  });
+
+  test("都道府県が無く解決できないものは送る（400 という見えるエラーで返る）", async () => {
+    // 黙って誤った場所へ解決されるより、バックエンドに 400 を返させるほうが安全
+    for (const input of ["せたがや区", "存在しない町"]) {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "fallback", `${input} → ${await resolved(input)}`);
     }
   });
 
