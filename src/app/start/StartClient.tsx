@@ -242,6 +242,11 @@ export default function StartClient() {
   const [birthPlace, setBirthPlace] = useState("");
   const [placeResolution, setPlaceResolution] = useState<BirthPlaceResolution | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Municipality | null>(null);
+  // 出生地の現在値。handleSubmit の await 後は birthPlace が押した時点の値に固定されるため、
+  // 「待っているあいだに書き換えられたか」はこちらで見る（onChange で同期している）。
+  const birthPlaceRef = useRef("");
+  // 送信の再入ガード。pageState は await を抜けるまで "input" のままなので state では防げない。
+  const submitting = useRef(false);
   const [category, setCategory] = useState<CategoryId | "">("");
   const [deliveryChannel, setDeliveryChannel] = useState<DeliveryChannel | "">("");
   const [email, setEmail] = useState("");
@@ -375,60 +380,73 @@ export default function StartClient() {
   }
 
   async function handleSubmit() {
-    setFormError(null);
-
-    // 入力直後に押された場合はデバウンス待ちの解決がまだ無いので、ここで確定させる
-    let place = placeResolution;
-    if (!place && birthPlace.trim()) {
-      place = await resolveBirthPlace(birthPlace.trim());
-      setPlaceResolution(place);
-    }
-
-    const errors = validate(place);
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
-    // validate を通っていれば必ず値が決まる
-    const resolvedPlace = birthPlaceValue(place!, selectedPlace)!;
-
-    setPageState("loading");
+    // 出生地の解決を待っているあいだに押し直されても、二重に送らない
+    if (submitting.current) return;
+    submitting.current = true;
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const response = await fetch(`${apiUrl}/api/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          year: Number(year),
-          month: Number(month),
-          day: Number(day),
-          hour: isTimeUnknown ? 12 : Number(hour),
-          minute: isTimeUnknown ? 0 : Number(minute),
-          time_unknown: isTimeUnknown,
-          // 市区町村マスターで解決できたものは「緯度,経度」。辞書外は文字列のまま
-          birth_place: resolvedPlace,
-          category,
-          delivery_channel: deliveryChannel,
-          email: deliveryChannel === "email" ? email.trim() : null,
-          entry_source: entrySource || null,
-          turnstile_token: turnstileToken,
-        }),
-      });
+      setFormError(null);
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        handleApiError(response.status, (body as { detail?: unknown })?.detail);
-        return;
+      // 入力直後に押された場合はデバウンス待ちの解決がまだ無いので、ここで確定させる
+      const submitted = birthPlace.trim();
+      let place = placeResolution;
+      if (!place && submitted) {
+        const resolved = await resolveBirthPlace(submitted);
+        // 廃止された市区町村の取得中に出生地が書き換えられていたら、古い入力の結果は捨てる。
+        // 画面に出ている地名と違う場所で計算させないため。
+        if (birthPlaceRef.current.trim() !== submitted) return;
+        place = resolved;
+        setPlaceResolution(place);
       }
 
-      setResult((await response.json()) as StartResponse);
-      setPageState("result");
-    } catch {
-      setTurnstileToken(null);
-      setFormError(
-        "通信に失敗しました。電波状況をご確認のうえ、時間をおいて再度お試しください。"
-      );
-      setPageState("input");
+      const errors = validate(place);
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+
+      // validate を通っていれば必ず値が決まる
+      const resolvedPlace = birthPlaceValue(place!, selectedPlace)!;
+
+      setPageState("loading");
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const response = await fetch(`${apiUrl}/api/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            year: Number(year),
+            month: Number(month),
+            day: Number(day),
+            hour: isTimeUnknown ? 12 : Number(hour),
+            minute: isTimeUnknown ? 0 : Number(minute),
+            time_unknown: isTimeUnknown,
+            // 市区町村マスターで解決できたものは「緯度,経度」。辞書外は文字列のまま
+            birth_place: resolvedPlace,
+            category,
+            delivery_channel: deliveryChannel,
+            email: deliveryChannel === "email" ? email.trim() : null,
+            entry_source: entrySource || null,
+            turnstile_token: turnstileToken,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          handleApiError(response.status, (body as { detail?: unknown })?.detail);
+          return;
+        }
+
+        setResult((await response.json()) as StartResponse);
+        setPageState("result");
+      } catch {
+        setTurnstileToken(null);
+        setFormError(
+          "通信に失敗しました。電波状況をご確認のうえ、時間をおいて再度お試しください。"
+        );
+        setPageState("input");
+      }
+    } finally {
+      submitting.current = false;
     }
   }
 
@@ -1017,6 +1035,7 @@ export default function StartClient() {
                 value={birthPlace}
                 onChange={(e) => {
                   setBirthPlace(e.target.value);
+                  birthPlaceRef.current = e.target.value;
                   setPlaceResolution(null);
                   setSelectedPlace(null);
                 }}
