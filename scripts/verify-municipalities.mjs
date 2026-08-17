@@ -70,13 +70,31 @@ const ALWAYS_CHECK = [
 
 // ── 引数 ────────────────────────────────────────────────
 const args = process.argv.slice(2);
-const codesArg = args.includes("--codes") ? args[args.indexOf("--codes") + 1] : null;
+const codesIndex = args.indexOf("--codes");
+const codesArg = codesIndex >= 0 ? args[codesIndex + 1] : null;
+
+/** 対象の選び方そのものに誤りがあったか。検証結果とは別に終了コードへ反映する。 */
+let setupFailed = false;
 
 function selectTargets() {
   const byCode = new Map(MUNICIPALITIES.map((m) => [m[0], m]));
-  if (codesArg) {
-    return codesArg.split(",").map((c) => byCode.get(c.trim())).filter(Boolean);
+
+  if (codesIndex >= 0) {
+    if (!codesArg || codesArg.startsWith("--")) {
+      console.error("⚠ --codes に団体コードを指定してください（例: --codes 13421,46304）");
+      setupFailed = true;
+      return [];
+    }
+    const requested = [...new Set(codesArg.split(",").map((c) => c.trim()).filter(Boolean))];
+    const unknown = requested.filter((c) => !byCode.has(c));
+    // 存在しないコードを黙って捨てると、検証したつもりの自治体が検証されない
+    if (unknown.length) {
+      console.error(`⚠ マスターに無い団体コード: ${unknown.join(", ")}`);
+      setupFailed = true;
+    }
+    return requested.filter((c) => byCode.has(c)).map((c) => byCode.get(c));
   }
+
   if (args.includes("--all")) return MUNICIPALITIES;
 
   const picked = new Map();
@@ -96,7 +114,7 @@ function selectTargets() {
     console.error(`⚠ 既定サンプルの指定に誤りがあります（${listErrors.length}件）`);
     for (const e of listErrors) console.error(`  - ${e}`);
     console.error("");
-    process.exitCode = 1;
+    setupFailed = true;
   }
   // 特定の傾向に偏らないよう、全体からも等間隔で拾う
   const step = Math.floor(MUNICIPALITIES.length / 30);
@@ -113,19 +131,45 @@ function nameParts(name) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * 逆引き結果を返す。通信の失敗と「座標が悪い」を区別するため、種別を添える。
+ * kind:"network" は再実行すれば直る類、kind:"place" は座標かデータの問題。
+ */
 async function reverse(lat, lng) {
   const url =
     `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}` +
     `&format=jsonv2&zoom=${ZOOM}&addressdetails=1&accept-language=ja`;
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
-  if (!res.ok) return { error: `HTTP ${res.status}` };
-  const body = await res.json();
-  if (!body || body.error || !body.address) return { error: "逆引きできない（海上の可能性）" };
+  let res;
+  try {
+    res = await fetch(url, { headers: { "User-Agent": UA } });
+  } catch (e) {
+    return { kind: "network", error: `接続できない（${e.message}）` };
+  }
+  if (!res.ok) {
+    // 429/5xx は相手側の一時的な事情。座標の問題と混ぜない
+    return { kind: res.status === 429 || res.status >= 500 ? "network" : "place", error: `HTTP ${res.status}` };
+  }
+  let body;
+  try {
+    body = await res.json();
+  } catch (e) {
+    return { kind: "network", error: `応答が JSON でない（${e.message}）` };
+  }
+  if (!body || body.error || !body.address) {
+    return { kind: "place", error: "逆引きできない（海上の可能性）" };
+  }
   return { address: body.address, display: body.display_name ?? "" };
 }
 
+/**
+ * 逆引き結果のうち、市区町村レベルを表すフィールド。
+ * 道路名や町名（road / neighbourhood 等）を判定に混ぜると、たまたま自治体名を含む
+ * 通り名で通ってしまうため、階層を限定する。
+ */
+const MUNICIPALITY_FIELDS = ["city", "town", "village", "municipality", "suburb", "city_district", "borough"];
+
 function judge(m, address) {
-  const [code, pref, , name] = m;
+  const [code, pref, county, name] = m;
   const problems = [];
 
   // 1. 都道府県（ISO コードで見る。無ければ名前で見る）
@@ -138,22 +182,36 @@ function judge(m, address) {
     if (!values.includes(pref)) problems.push(`都道府県 ${pref} が逆引き結果に無い`);
   }
 
-  // 2. 市区町村名の構成要素
-  const haystack = placeKey(Object.values(address).join(" "));
-  const missing = nameParts(name).filter((part) => !haystack.includes(placeKey(part)));
-  if (missing.length) problems.push(`${missing.join("・")} が逆引き結果に無い`);
+  // 2. 市区町村名。**部分一致ではなく完全一致**で見る。
+  //    包含関係にある自治体（士幌町 と 上士幌町、清水町 と 小清水町 など）が
+  //    同一都道府県に実在するため、部分一致だと取り違えを見逃す。
+  const levels = MUNICIPALITY_FIELDS.map((f) => address[f]).filter(Boolean).map(placeKey);
+  const missing = nameParts(name).filter((part) => !levels.includes(placeKey(part)));
+  if (missing.length) {
+    problems.push(`${missing.join("・")} が市区町村レベルに無い（実際: ${levels.join(" / ") || "なし"}）`);
+  }
+
+  // 3. 郡。同名の町村を別の郡と取り違えていないか（両方に値があるときだけ見る）。
+  //    OSM は同名の郡を「上川郡(十勝国)」のように括弧付きで区別するので、そこは落として比べる。
+  if (county && address.county) {
+    const theirs = placeKey(address.county.replace(/[(（].*?[)）]/g, ""));
+    if (theirs !== placeKey(county)) {
+      problems.push(`郡が違う（期待 ${county} / 実際 ${address.county}）`);
+    }
+  }
 
   return problems;
 }
 
 // ── 実行 ────────────────────────────────────────────────
 const targets = selectTargets();
-const mode = codesArg ? "指定コード" : args.includes("--all") ? "全件" : "代表サンプル";
+const mode = codesIndex >= 0 ? "指定コード" : args.includes("--all") ? "全件" : "代表サンプル";
 console.error(
   `${mode} ${targets.length}件を検証します（約${Math.ceil((targets.length * INTERVAL_MS) / 60000)}分）\n`
 );
 
-const failures = [];
+const failures = [];   // 座標かデータの問題
+const unreached = [];  // 通信の問題。再実行で直る類なので分けて数える
 let checked = 0;
 
 for (const m of targets) {
@@ -163,8 +221,9 @@ for (const m of targets) {
   const got = await reverse(lat, lng);
 
   if (got.error) {
-    failures.push(`${code} ${full}（${lat},${lng}）: ${got.error}`);
-    console.log(`✖ ${full.padEnd(20)} ${got.error}`);
+    const line = `${code} ${full}（${lat},${lng}）: ${got.error}`;
+    (got.kind === "network" ? unreached : failures).push(line);
+    console.log(`${got.kind === "network" ? "…" : "✖"} ${full.padEnd(20)} ${got.error}`);
     continue;
   }
   const problems = judge(m, got.address);
@@ -179,5 +238,14 @@ for (const m of targets) {
 }
 
 console.log(`\n${checked}/${targets.length} 合格`);
-for (const f of failures) console.log(`  - ${f}`);
-process.exitCode = failures.length ? 1 : 0;
+if (failures.length) {
+  console.log(`座標・データの問題 ${failures.length}件:`);
+  for (const f of failures) console.log(`  - ${f}`);
+}
+if (unreached.length) {
+  console.log(`通信できず未検証 ${unreached.length}件（再実行で確かめること。合格ではない）:`);
+  for (const u of unreached) console.log(`  - ${u}`);
+}
+// 対象の選び方の誤り・検証の失敗・未検証のいずれかがあれば異常終了する。
+// 「未検証」を合格に混ぜると、確かめていないものを確かめたことにしてしまう。
+process.exitCode = setupFailed || failures.length || unreached.length ? 1 : 0;

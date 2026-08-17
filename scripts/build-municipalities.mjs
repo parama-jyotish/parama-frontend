@@ -220,7 +220,9 @@ async function buildFromGeolonia() {
   const out = [];
   for (const e of byCode.values()) {
     if (!e.lats.length) { note(`座標を持つ町字が無い: ${e.pref}${e.fullName}（${e.code}）`); continue; }
-    const gun = e.fullName.match(/^(.+?郡)(.+)$/);
+    // 郡に属するのは町村だけ。末尾を町/村に限らないと「蒲郡市」の郡を郡名と誤認し、
+    // county="蒲郡" / name="市" のように壊れる（大和郡山市・小郡市も同様）。
+    const gun = e.fullName.match(/^(.+郡)(.+[町村])$/);
     out.push({
       code: e.code,
       pref: e.pref,
