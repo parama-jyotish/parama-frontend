@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import {
   normalizeBirthPlace,
   resolveBirthPlace,
+  birthPlacePayload,
   municipalityLabel,
   type BirthPlaceResolution,
 } from "./birth-place.ts";
@@ -223,6 +224,62 @@ describe("廃止された市区町村", () => {
     // 「大宮区」はさいたま市に現存し、「大宮市」は廃止済み。取り違えない
     const now = await resolveBirthPlace("さいたま市大宮区");
     assert.equal(now.kind === "coords" ? now.label : "", "埼玉県さいたま市大宮区");
+  });
+});
+
+// ── /api/start へ送る形 ──
+describe("送信ペイロード", () => {
+  test("マスターで解決できたものは緯度経度を添える", async () => {
+    const payload = birthPlacePayload(await resolveBirthPlace("東京都八丈町"), null);
+    assert.deepEqual(payload, { birth_place: "東京都八丈町", latitude: 33.12091, longitude: 139.79154 });
+  });
+
+  test("廃止された市区町村は注記を付けずに地名だけ送る", async () => {
+    // 画面では「（2001年まで）」と出すが、送信・保存する地名には含めない
+    const payload = birthPlacePayload(await resolveBirthPlace("東京都保谷市"), null);
+    assert.equal(payload?.birth_place, "東京都保谷市");
+    assert.ok(Math.abs((payload?.latitude ?? 0) - 35.74) < 0.05);
+    assert.ok(Math.abs((payload?.longitude ?? 0) - 139.56) < 0.05);
+  });
+
+  test("郡は地名に含める", async () => {
+    const payload = birthPlacePayload(await resolveBirthPlace("松島町"), null);
+    assert.equal(payload?.birth_place, "宮城県宮城郡松島町");
+  });
+
+  test("緯度経度を直接入力した場合はその値をそのまま送る", async () => {
+    assert.deepEqual(
+      birthPlacePayload(await resolveBirthPlace("35.68, 139.76"), null),
+      { birth_place: "35.68,139.76", latitude: 35.68, longitude: 139.76 }
+    );
+    // 南半球・西半球の符号が落ちないこと
+    assert.deepEqual(
+      birthPlacePayload(await resolveBirthPlace("S33.8688 W151.2093"), null),
+      { birth_place: "-33.8688,-151.2093", latitude: -33.8688, longitude: -151.2093 }
+    );
+  });
+
+  test("辞書外は地名だけを送る（緯度経度のキーを持たない）", async () => {
+    const payload = birthPlacePayload(await resolveBirthPlace("シドニー"), null);
+    assert.deepEqual(payload, { birth_place: "シドニー" });
+    assert.equal("latitude" in payload!, false);
+  });
+
+  test("候補が未選択のあいだ、および解決できないものは送れない", async () => {
+    assert.equal(birthPlacePayload(await resolveBirthPlace("北区"), null), null);
+    assert.equal(birthPlacePayload(await resolveBirthPlace("東京都せたがや区"), null), null);
+  });
+
+  test("候補を選べば、その市区町村の座標で送れる", async () => {
+    const r = await resolveBirthPlace("北区");
+    assert.equal(r.kind, "ambiguous");
+    if (r.kind !== "ambiguous") return;
+    const osaka = r.candidates.find((m) => m.pref === "大阪府")!;
+    assert.deepEqual(birthPlacePayload(r, osaka), {
+      birth_place: "大阪府大阪市北区",
+      latitude: osaka.lat,
+      longitude: osaka.lng,
+    });
   });
 });
 

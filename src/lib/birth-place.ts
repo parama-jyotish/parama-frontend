@@ -251,6 +251,45 @@ export function municipalityValue(m: Municipality): string {
   return `${m.lat},${m.lng}`;
 }
 
+/** `/api/start` へ送る出生地の項目。緯度経度は決まったときだけ付ける。 */
+export interface BirthPlacePayload {
+  birth_place: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+function municipalityPayload(m: Municipality): BirthPlacePayload {
+  // 廃止年の注記（municipalityLabel）は画面表示用。送信・保存は地名だけにする
+  return { birth_place: `${m.pref}${m.county}${m.name}`, latitude: m.lat, longitude: m.lng };
+}
+
+/**
+ * 送信する出生地を決める。決まらない場合（候補未選択・解決不能）は null。
+ *
+ * マスターで解決できたものは緯度経度を添えて送り、バックエンドにジオコーディングを
+ * させない（`StartRequest.latitude`/`longitude`）。これで地名検索の曖昧さが計算へ
+ * 波及する経路が無くなる。辞書外（主に海外）は地名だけを送り、従来どおり委ねる。
+ */
+export function birthPlacePayload(
+  place: BirthPlaceResolution,
+  selected: Municipality | null
+): BirthPlacePayload | null {
+  switch (place.kind) {
+    case "coords": {
+      if (place.municipality) return municipalityPayload(place.municipality);
+      // 利用者が緯度経度を直接入力した場合。value は "35.68,139.76" に正規化済み
+      const [latitude, longitude] = place.value.split(",").map(Number);
+      return { birth_place: place.value, latitude, longitude };
+    }
+    case "ambiguous":
+      return selected ? municipalityPayload(selected) : null;
+    case "fallback":
+      return { birth_place: place.value };
+    case "unknown":
+      return null;
+  }
+}
+
 /**
  * 日本の住所として書かれているか。
  *

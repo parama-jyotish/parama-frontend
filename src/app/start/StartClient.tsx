@@ -24,8 +24,8 @@ import LogoWordmark from "@/components/LogoWordmark";
 import { CITIES } from "@/data/cities";
 import {
   resolveBirthPlace,
+  birthPlacePayload,
   municipalityLabel,
-  municipalityValue,
   type BirthPlaceResolution,
   type Municipality,
 } from "@/lib/birth-place";
@@ -187,25 +187,6 @@ function mapValidationErrors(detail: unknown): FieldErrors {
   return errors;
 }
 
-/**
- * 送信する `birth_place` を決める。決まらない場合（候補未選択・解決不能）は null。
- * 市区町村マスターで解決できたものは「緯度,経度」で送り、Nominatim には逆引きだけさせる。
- */
-function birthPlaceValue(
-  place: BirthPlaceResolution,
-  selected: Municipality | null
-): string | null {
-  switch (place.kind) {
-    case "coords":
-    case "fallback":
-      return place.value;
-    case "ambiguous":
-      return selected ? municipalityValue(selected) : null;
-    case "unknown":
-      return null;
-  }
-}
-
 /** LINE 組の遷移先（エルメ URL + cid1〜cid5）。未設定・不正な URL の場合は null。 */
 function buildElmeUrl(result: StartResponse, entrySource: string): string | null {
   const base = process.env.NEXT_PUBLIC_ELME_LINE_URL;
@@ -346,7 +327,7 @@ export default function StartClient() {
     (isTimeUnknown || (hour !== "" && minute !== "")) &&
     birthPlace.trim() !== "" &&
     placeResolution !== null &&
-    birthPlaceValue(placeResolution, selectedPlace) !== null &&
+    birthPlacePayload(placeResolution, selectedPlace) !== null &&
     category !== "" &&
     deliveryChannel !== "" &&
     (deliveryChannel !== "email" || email.trim() !== "") &&
@@ -404,7 +385,7 @@ export default function StartClient() {
       if (Object.keys(errors).length > 0) return;
 
       // validate を通っていれば必ず値が決まる
-      const resolvedPlace = birthPlaceValue(place!, selectedPlace)!;
+      const placePayload = birthPlacePayload(place!, selectedPlace)!;
 
       setPageState("loading");
 
@@ -420,8 +401,11 @@ export default function StartClient() {
             hour: isTimeUnknown ? 12 : Number(hour),
             minute: isTimeUnknown ? 0 : Number(minute),
             time_unknown: isTimeUnknown,
-            // 市区町村マスターで解決できたものは「緯度,経度」。辞書外は文字列のまま
-            birth_place: resolvedPlace,
+            // マスターで解決できたものは緯度経度も送り、バックエンドにジオコーディング
+            // させない。辞書外は地名だけ（undefined は JSON から落ちる）
+            birth_place: placePayload.birth_place,
+            latitude: placePayload.latitude,
+            longitude: placePayload.longitude,
             category,
             delivery_channel: deliveryChannel,
             email: deliveryChannel === "email" ? email.trim() : null,
