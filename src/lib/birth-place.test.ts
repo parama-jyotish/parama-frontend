@@ -20,6 +20,7 @@ import {
   municipalityLabel,
   type BirthPlaceResolution,
 } from "./birth-place.ts";
+import { MUNICIPALITIES } from "../data/municipalities.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -224,6 +225,91 @@ describe("廃止された市区町村", () => {
     // 「大宮区」はさいたま市に現存し、「大宮市」は廃止済み。取り違えない
     const now = await resolveBirthPlace("さいたま市大宮区");
     assert.equal(now.kind === "coords" ? now.label : "", "埼玉県さいたま市大宮区");
+  });
+});
+
+// ── マスター全件 ──
+describe("マスター全件の整合", () => {
+  test("すべての市区町村が、都道府県から書けば自分自身の座標に解決する", async () => {
+    // 空のマスターを回して素通りするのを防ぐ（現行1,912件。合併で減っても1,700は下回らない）
+    assert.ok(MUNICIPALITIES.length > 1700, `マスターが ${MUNICIPALITIES.length}件しかない`);
+    const failures: string[] = [];
+    for (const [, pref, county, name, , lat, lng] of MUNICIPALITIES) {
+      const full = `${pref}${county}${name}`;
+      const r = await resolveBirthPlace(full);
+      if (r.kind !== "coords") {
+        failures.push(`${full} → ${r.kind}`);
+      } else if (r.value !== `${lat},${lng}`) {
+        failures.push(`${full} → ${r.value}（期待 ${lat},${lng}）`);
+      }
+    }
+    assert.deepEqual(failures.slice(0, 10), [], `${MUNICIPALITIES.length}件中 ${failures.length}件が不一致`);
+  });
+
+  test("正規化で同じキーになる別の市区町村は、候補提示にして取り違えない", async () => {
+    // placeKey が 嶋→島 を吸収するため「鹿嶋市」と「鹿島市」は同じキーになる
+    const r = await resolveBirthPlace("鹿島市");
+    assert.equal(r.kind, "ambiguous");
+    if (r.kind !== "ambiguous") return;
+    assert.deepEqual(r.candidates.map(municipalityLabel).sort(), ["佐賀県鹿島市", "茨城県鹿嶋市"]);
+
+    // 都道府県を付ければどちらも一意に決まる
+    for (const [input, expected] of [
+      ["茨城県鹿嶋市", "茨城県鹿嶋市"],
+      ["佐賀県鹿島市", "佐賀県鹿島市"],
+      ["茨城県鹿島市", "茨城県鹿嶋市"], // 誤字（島/嶋）でも正しい方へ寄る
+    ]) {
+      const hit = await resolveBirthPlace(input);
+      assert.equal(hit.kind === "coords" ? hit.label : hit.kind, expected, input);
+    }
+  });
+});
+
+// ── 廃止マスターの取得失敗 ──
+/**
+ * 廃止マスターの索引はモジュール内にキャッシュされるため、取得失敗を試すには
+ * 読み直しが要る。クエリを付けると Node は別インスタンスとして読む。
+ * specifier を変数にしているのは、クエリ付きのパスを TypeScript が解決できないため。
+ */
+async function reloadModule(tag: string): Promise<typeof import("./birth-place.ts")> {
+  const specifier = `./birth-place.ts?${tag}`;
+  return import(specifier);
+}
+
+describe("廃止マスターの取得に失敗したとき", () => {
+  test("送信させず、復旧後は引き直せる", async () => {
+    const working = globalThis.fetch;
+    // モジュール内に索引がキャッシュされるので、取得失敗を試すには読み直しが要る
+    const fresh = await reloadModule("historical-fetch-failure");
+
+    globalThis.fetch = (async () => { throw new Error("ネットワーク断"); }) as unknown as typeof fetch;
+    try {
+      const failed = await fresh.resolveBirthPlace("東京都保谷市");
+      assert.equal(failed.kind, "unknown");
+      assert.equal(failed.kind === "unknown" ? failed.reason : "", "lookup-failed");
+
+      // 現行マスターだけで足りる入力は、取得に失敗しても解決できる
+      const current = await fresh.resolveBirthPlace("東京都世田谷区");
+      assert.equal(current.kind, "coords");
+    } finally {
+      globalThis.fetch = working;
+    }
+
+    // 失敗時にキャッシュを捨てているので、次の入力で取り直せる
+    const retried = await fresh.resolveBirthPlace("東京都保谷市");
+    assert.equal(retried.kind === "coords" ? retried.label : retried.kind, "東京都保谷市（2001年まで）");
+  });
+
+  test("404 が返った場合も送信させない", async () => {
+    const working = globalThis.fetch;
+    const fresh = await reloadModule("historical-404");
+    globalThis.fetch = (async () => ({ ok: false, status: 404 })) as unknown as typeof fetch;
+    try {
+      const r = await fresh.resolveBirthPlace("東京都保谷市");
+      assert.equal(r.kind === "unknown" ? r.reason : r.kind, "lookup-failed");
+    } finally {
+      globalThis.fetch = working;
+    }
   });
 });
 
