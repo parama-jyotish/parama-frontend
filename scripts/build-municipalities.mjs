@@ -96,6 +96,9 @@ function unzip(buf) {
   if (eocd < 0) throw new Error("xlsx: End of Central Directory が見つからない");
   const count = buf.readUInt16LE(eocd + 10);
   let p = buf.readUInt32LE(eocd + 16);
+  // ZIP64 では件数・オフセットが 0xFFFF / 0xFFFFFFFF の番兵になる。総務省の xlsx は
+  // 100KB 程度なので該当しないが、黙って壊れた値で読み進めないよう弾いておく
+  if (count === 0xffff || p === 0xffffffff) throw new Error("xlsx: ZIP64 形式には対応していない");
   const files = new Map();
   for (let n = 0; n < count; n++) {
     const method = buf.readUInt16LE(p + 10);
@@ -110,6 +113,11 @@ function unzip(buf) {
     const localExtraLen = buf.readUInt16LE(localHeader + 28);
     const start = localHeader + 30 + localNameLen + localExtraLen;
     const raw = buf.subarray(start, start + compressedSize);
+    // 0=無圧縮 / 8=deflate のみ扱う。未知の方式を inflateRawSync へ渡すと
+    // 意味の無いデータか例外になるので、方式そのものを弾く
+    if (method !== 0 && method !== 8) {
+      throw new Error(`xlsx: 未対応の圧縮方式 ${method}（${name}）`);
+    }
     files.set(name, method === 0 ? raw : inflateRawSync(raw));
     p += 46 + nameLen + extraLen + commentLen;
   }
@@ -154,6 +162,13 @@ function median(values) {
 
 /** 送信値と同じ丸め（src/lib/birth-place.ts の round5）。 */
 const round5 = (n) => parseFloat(n.toFixed(5));
+
+/** 2点間の概算距離（km）。代表点のずれを報告するためだけに使う。 */
+function distanceKm(aLat, aLng, bLat, bLng) {
+  const dy = (aLat - bLat) * 111.32;
+  const dx = (aLng - bLng) * 111.32 * Math.cos((aLat * Math.PI) / 180);
+  return Math.hypot(dx, dy);
+}
 
 /** 半角カナ → 全角カナ（総務省コード表のカナ列がこの形）。 */
 const HALFWIDTH_KANA = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｬｭｮｯｰ";
@@ -229,11 +244,24 @@ async function readSoumu() {
   const cities = sheet2.filter((r) => !/.区$/.test(r.C)).map(cell);
   const wards = sheet2.filter((r) => /.区$/.test(r.C)).map(cell);
   const cityNames = new Set(cities.map((c) => c.name));
-  return {
-    // Geolonia と同じ粒度（政令市は区へ展開したもの）
-    municipalities: [...plain.filter((r) => !cityNames.has(r.name)), ...wards],
-    designatedCities: cities,
-  };
+  // Geolonia と同じ粒度（政令市は区へ展開したもの）
+  const municipalities = [...plain.filter((r) => !cityNames.has(r.name)), ...wards];
+  reportDuplicateCodes(municipalities, "総務省 市区町村");
+  reportDuplicateCodes(cities, "総務省 政令市");
+  return { municipalities, designatedCities: cities };
+}
+
+/**
+ * 同じ団体コードが2件以上ないか見る。
+ * この後の突合はコードで Map を作るため、重複していると後勝ちで黙って上書きされる。
+ */
+function reportDuplicateCodes(rows, label) {
+  const seen = new Map();
+  for (const r of rows) {
+    const first = seen.get(r.code);
+    if (first) note(`${label} に同じコードが2件: ${r.code}「${first.pref}${first.name}」「${r.pref}${r.name}」`);
+    else seen.set(r.code, r);
+  }
 }
 
 // ── 3. 浜松市の区再編（2024-01-01、7区→3区） ────────────
@@ -329,6 +357,40 @@ function addDesignatedCities(items, designated, codh) {
   return items;
 }
 
+// ── 5-2. 代表点の個別補正 ───────────────────────────────
+/**
+ * 町字座標の中央値が実態から外れる自治体を、CODH の代表点（役場の位置）で上書きする。
+ *
+ * 緯度と経度を独立に中央値化する方式は、二峰分布（複数の島に分かれた自治体）では
+ * どちらか一方へ寄る。小笠原村は父島・母島に分かれており中央値が母島側へ落ちるが、
+ * 人口の中心は父島にある（約48km差）。
+ *
+ * 全体を役場基準に変えることはしない。離島では役場が区域外にあることがあり
+ * （十島村の村役場は鹿児島市内で235kmずれる。docs/31 §2 の実測）、中央値のほうが安全。
+ * ここは実害が確認できた自治体だけを名指しで直す。
+ */
+const REPRESENTATIVE_POINT_OVERRIDES = {
+  "13421": "小笠原村。中央値は母島側だが人口の中心は父島（村役場）",
+};
+
+function applyRepresentativePointOverrides(items, codh) {
+  const codhCurrent = new Map(codh.filter((r) => !r.valid_to).map((r) => [r.code, r]));
+  for (const [code, reason] of Object.entries(REPRESENTATIVE_POINT_OVERRIDES)) {
+    const target = items.find((m) => m.code === code);
+    const source = codhCurrent.get(code);
+    if (!target || !source) { note(`代表点を補正できない: ${code}（${reason}）`); continue; }
+    const lat = round5(Number(source.latitude));
+    const lng = round5(Number(source.longitude));
+    const moved = distanceKm(target.lat, target.lng, lat, lng);
+    process.stderr.write(
+      `  代表点を補正: ${target.pref}${target.name} ${target.lat},${target.lng} → ${lat},${lng}（${moved.toFixed(1)}km / ${reason}）\n`
+    );
+    target.lat = lat;
+    target.lng = lng;
+  }
+  return items;
+}
+
 // ── 6. 総務省との突合 ───────────────────────────────────
 /** 北方領土の6村。総務省の表にはあるが出生地としては扱わない。 */
 const KURIL = new Set(["01695", "01696", "01697", "01698", "01699", "01700"]);
@@ -341,6 +403,7 @@ const KURIL = new Set(["01695", "01696", "01697", "01698", "01699", "01700"]);
  * 正式な表記（総務省）に従う。
  */
 function crossCheck(items, soumu) {
+  reportDuplicateCodes(items, "マスター");
   const ours = new Map(items.map((m) => [m.code, m]));
   const theirs = new Map(soumu.map((m) => [m.code, m]));
   const renamed = [];
@@ -348,6 +411,11 @@ function crossCheck(items, soumu) {
     if (KURIL.has(code)) continue;
     const mine = ours.get(code);
     if (!mine) { note(`総務省にあってマスターに無い: ${code} ${s.pref}${s.name}`); continue; }
+    // コードが合っていても都道府県が食い違うなら、集計のどこかで取り違えている
+    if (mine.pref !== s.pref) {
+      note(`都道府県が総務省と一致しない: ${code} 総務省「${s.pref}」/ マスター「${mine.pref}」`);
+      continue;
+    }
     const theirKey = placeKey(s.name);
     if (theirKey !== placeKey(mine.county + mine.name) && theirKey !== placeKey(mine.name)) {
       note(`名称が総務省と一致しない: ${code} 総務省「${s.pref}${s.name}」/ マスター「${mine.pref}${mine.county}${mine.name}」`);
@@ -404,6 +472,14 @@ function buildHistorical(current, rows) {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) { note(`CODH に座標が無い: ${r.entry_id} ${pref}${county}${name}`); continue; }
     // 同じ区域が村→町→市と昇格した場合は名前ごとに別エントリ（利用者はどれでも書きうる）
     const existing = seen.get(key);
+    if (existing) {
+      // 同名で期間の違うものは、廃止年が新しい1件だけを残す。区域が動いていれば
+      // 捨てた側と座標が離れるので、出生年で選び分ける必要があるかの判断材料として報告する
+      const km = distanceKm(existing.lat, existing.lng, lat, lng);
+      if (km > 1) {
+        note(`廃止済みの同名エントリで代表点が ${km.toFixed(1)}km 離れている: ${pref}${county}${name}（${existing.year} と ${year}）`);
+      }
+    }
     if (!existing || existing.year < year) {
       seen.set(key, { pref, county, name, lat: round5(lat), lng: round5(lng), year });
     }
@@ -436,6 +512,7 @@ process.stderr.write(`Geolonia 集約: ${current.length}件\n`);
 current = reorganizeHamamatsu(current);
 current = fillGapsFromCodh(current, soumu.municipalities, codh);
 current = addDesignatedCities(current, soumu.designatedCities, codh);
+current = applyRepresentativePointOverrides(current, codh);
 current.sort((a, b) => a.code.localeCompare(b.code));
 process.stderr.write(`補正後: ${current.length}件（東京都 ${current.filter((m) => m.pref === "東京都").length}件）\n`);
 
@@ -453,6 +530,16 @@ for (const [key, group] of bare.sort((a, b) => b[1].length - a[1].length).slice(
 }
 const full = collisions(current, (m) => placeKey(m.pref + m.county + m.name));
 if (full.length) note(`都道府県まで含めても一意にならない: ${full.map(([k]) => k).join(", ")}`);
+
+// 正規化（placeKey）が別々の自治体を同じキーへ寄せている組。実行時は候補提示になるので
+// 誤答にはならないが、異体字の吸収しすぎに気づけるよう一覧で出す。ビルドは失敗させない。
+const merged = bare.filter(([, group]) => new Set(group.map((m) => m.name)).size > 1);
+if (merged.length) {
+  process.stderr.write(`  正規化で同じキーになった別名の組: ${merged.length}件\n`);
+  for (const [key, group] of merged) {
+    process.stderr.write(`    ${key} ← ${group.map((m) => m.pref + m.county + m.name).join(" / ")}\n`);
+  }
+}
 
 // ── 書き出し ────────────────────────────────────────────
 const stamp = new Date().toISOString().slice(0, 10);
