@@ -36,6 +36,12 @@ export interface Municipality {
   lng: number;
   /** 廃止年。現存する市区町村では undefined、廃止済みだが年が不明な場合は 0。 */
   abolished?: number;
+  /**
+   * 設立年。同じ名前が別の時代に別の区域で使われていた場合にだけ入る（それ以外は 0）。
+   * 「茨城県新治郡新治村」は 1889〜1954 と 1955〜2006 で 7.4km 離れた別の場所にあり、
+   * 期間を見せないと利用者が選び分けられない。
+   */
+  established?: number;
 }
 
 export type BirthPlaceResolution =
@@ -232,9 +238,9 @@ function getHistoricalIndex(): Promise<MunicipalityIndex> {
       if (!res.ok) throw new Error(`historical master: HTTP ${res.status}`);
       return res.json();
     })
-    .then((data: { items: [string, string, string, number, number, number][] }) =>
-      buildIndex(data.items.map(([pref, county, name, abolished, lat, lng]) => ({
-        pref, county, name, lat, lng, abolished,
+    .then((data: { items: [string, string, string, number, number, number, number][] }) =>
+      buildIndex(data.items.map(([pref, county, name, abolished, lat, lng, established]) => ({
+        pref, county, name, lat, lng, abolished, established,
       })))
     )
     .catch((err) => {
@@ -250,6 +256,8 @@ function getHistoricalIndex(): Promise<MunicipalityIndex> {
 export function municipalityLabel(m: Municipality): string {
   const name = `${m.pref}${m.county}${m.name}`;
   if (m.abolished === undefined) return name;
+  // 同名で場所が違うものは、期間を出さないと利用者が選び分けられない
+  if (m.established) return `${name}（${m.established}〜${m.abolished}年）`;
   return m.abolished ? `${name}（${m.abolished}年まで）` : `${name}（現在は廃止）`;
 }
 

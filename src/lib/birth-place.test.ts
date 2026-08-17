@@ -221,6 +221,40 @@ describe("廃止された市区町村", () => {
     assert.ok(Math.abs(lng - 139.56) < 0.05, `lng=${lng}`);
   });
 
+  test("同じ名前が別の時代に別の場所で使われていたら、期間つきで選ばせる", async () => {
+    // 茨城県新治郡新治村は 1889〜1954（現かすみがうら市側）と 1955〜2006（現土浦市側）で
+    // 7.4km 離れている。新しい方だけを残すと、1954年以前生まれが黙って別の場所になる
+    const r = await resolveBirthPlace("茨城県新治郡新治村");
+    assert.equal(r.kind, "ambiguous", `→ ${await resolved("茨城県新治郡新治村")}`);
+    if (r.kind !== "ambiguous") return;
+
+    const labels = r.candidates.map(municipalityLabel).sort();
+    assert.deepEqual(labels, [
+      "茨城県新治郡新治村（1889〜1954年）",
+      "茨城県新治郡新治村（1955〜2006年）",
+    ]);
+
+    // 候補の座標が実際に離れていること（同じ場所なら分ける意味がない）
+    const [a, b] = r.candidates;
+    const km = Math.hypot(
+      (a.lat - b.lat) * 111.32,
+      (a.lng - b.lng) * 111.32 * Math.cos((a.lat * Math.PI) / 180)
+    );
+    assert.ok(km > 5, `候補の距離が ${km.toFixed(1)}km しかない`);
+
+    // 選べば送信できる
+    const payload = birthPlacePayload(r, r.candidates[0]);
+    assert.equal(payload?.birth_place, "茨城県新治郡新治村");
+    assert.equal(payload?.latitude, r.candidates[0].lat);
+  });
+
+  test("同じ場所での村→町→市の昇格は1件にまとめる", async () => {
+    // 保谷は村→町→市と変わったが代表点は同じ。期間で分けず、最後の姿だけを持つ
+    const r = await resolveBirthPlace("東京都保谷市");
+    assert.equal(r.kind, "coords");
+    assert.equal(r.kind === "coords" ? r.label : "", "東京都保谷市（2001年まで）");
+  });
+
   test("現行の市区町村を廃止済みより優先する", async () => {
     // 「大宮区」はさいたま市に現存し、「大宮市」は廃止済み。取り違えない
     const now = await resolveBirthPlace("さいたま市大宮区");

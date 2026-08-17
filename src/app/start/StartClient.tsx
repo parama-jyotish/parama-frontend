@@ -1060,7 +1060,8 @@ export default function StartClient() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {placeResolution.candidates.map((candidate) => (
                       <button
-                        key={`${candidate.pref}${candidate.county}${candidate.name}`}
+                        // 同名で場所が違う候補（旧・新治村など）があるため座標まで含めて一意にする
+                        key={`${candidate.pref}${candidate.county}${candidate.name}${candidate.lat},${candidate.lng}`}
                         type="button"
                         onClick={() => setSelectedPlace(candidate)}
                         style={{

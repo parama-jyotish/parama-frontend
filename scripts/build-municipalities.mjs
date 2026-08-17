@@ -439,17 +439,26 @@ function crossCheck(items, soumu) {
 }
 
 // ── 7. CODH から廃止済み市区町村 ────────────────────────
+/** これ以内なら同じ場所とみなす。村→町→市の昇格は代表点が動かないため。 */
+const SAME_PLACE_KM = 1;
+
 /**
  * valid_to が入っているものを廃止済みとして採る。1920年より前に廃止された区域は
  * フォームの生年（1920年以降）では選びようがないので落とす。
  *
  * CODH は2023年10月時点のため、その後に廃止されたもの（浜松市の旧区）は valid_to が空のまま。
  * 現行マスターに無い「現存扱い」のエントリは廃止済みとして拾う。
+ *
+ * 同じ名前が別の時代に別の区域で使われていることがある。実データでは
+ * 茨城県新治郡新治村の1件だけで、1889〜1954年（現かすみがうら市側）と
+ * 1955〜2006年（現土浦市側）が 7.4km 離れている。廃止年の新しい方だけを残すと、
+ * 1954年以前生まれの入力が黙って別の場所へ解決されるため、**代表点が離れている
+ * ときだけ期間ごとに分けて持つ**。同じ場所の村→町→市の昇格は1件にまとめる。
  */
 function buildHistorical(current, rows) {
   const currentCodes = new Set(current.map((m) => m.code));
   const currentKeys = new Set(current.map((m) => placeKey(m.pref + m.county + m.name)));
-  const seen = new Map();
+  const groups = new Map();
   const stale = [];
   for (const r of rows) {
     // 島庁・入会地・区界未確定などは出生地として名乗られる単位ではない
@@ -472,22 +481,46 @@ function buildHistorical(current, rows) {
     const lat = Number(r.latitude);
     const lng = Number(r.longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) { note(`CODH に座標が無い: ${r.entry_id} ${pref}${county}${name}`); continue; }
-    // 同じ区域が村→町→市と昇格した場合は名前ごとに別エントリ（利用者はどれでも書きうる）
-    const existing = seen.get(key);
-    if (existing) {
-      // 同名で期間の違うものは、廃止年が新しい1件だけを残す。区域が動いていれば
-      // 捨てた側と座標が離れるので、出生年で選び分ける必要があるかの判断材料として報告する
-      const km = distanceKm(existing.lat, existing.lng, lat, lng);
-      if (km > 1) {
-        note(`廃止済みの同名エントリで代表点が ${km.toFixed(1)}km 離れている: ${pref}${county}${name}（${existing.year} と ${year}）`);
-      }
-    }
-    if (!existing || existing.year < year) {
-      seen.set(key, { pref, county, name, lat: round5(lat), lng: round5(lng), year });
-    }
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({
+      pref, county, name, year,
+      from: Number(r.valid_from.slice(0, 4)) || 0,
+      lat: round5(lat), lng: round5(lng),
+    });
   }
   process.stderr.write(`  CODH で現存扱いだが現行マスターに無い（廃止として採用）: ${stale.length}件 ${stale.join(" ")}\n`);
-  return [...seen.values()];
+
+  // 同じ名前のものを、代表点の近さで場所ごとにまとめる
+  const out = [];
+  const split = [];
+  for (const entries of groups.values()) {
+    const clusters = [];
+    for (const e of entries) {
+      const near = clusters.find((c) => distanceKm(c[0].lat, c[0].lng, e.lat, e.lng) <= SAME_PLACE_KM);
+      if (near) near.push(e);
+      else clusters.push([e]);
+    }
+    for (const cluster of clusters) {
+      // 同じ場所の村→町→市は1件にまとめ、廃止年は最も新しいものを採る
+      const latest = cluster.reduce((a, b) => (b.year > a.year ? b : a));
+      out.push({
+        ...latest,
+        // 期間で見分ける必要があるとき（同名で場所が違うとき）だけ設立年を持たせる。
+        // 全件に持たせるとファイルが太るうえ、見分けに使わない値になる
+        from: clusters.length > 1 ? Math.min(...cluster.map((e) => e.from)) : 0,
+      });
+    }
+    if (clusters.length > 1) {
+      const label = entries[0].pref + entries[0].county + entries[0].name;
+      const spans = clusters.map((c) => `${Math.min(...c.map((e) => e.from))}〜${Math.max(...c.map((e) => e.year))}`);
+      split.push(`${label}（${spans.join(" / ")}）`);
+    }
+  }
+  if (split.length) {
+    // 誤りではなく、利用者に選ばせるべき状態。ビルドは失敗させない
+    process.stderr.write(`  同名で場所が違うため期間別に分けた: ${split.length}件 ${split.join(" ")}\n`);
+  }
+  return out;
 }
 
 // ── 8. 同名衝突（照合キーが重なるもの）を数える ─────────
@@ -587,8 +620,9 @@ write(join(ROOT, "public/data/municipalities-historical.json"), JSON.stringify({
   generated: stamp,
   source: "歴史的行政区域データセットβ版『Geoshape市区町村IDデータセット』（CODH作成、CC BY 4.0）",
   // abolished は廃止年。0 は「廃止済みだが年が分からない」（CODH の記録漏れ・2023年10月以降の廃止）
-  columns: ["pref", "county", "name", "abolished", "lat", "lng"],
-  items: historical.map((h) => [h.pref, h.county, h.name, h.year, h.lat, h.lng]),
+  // established は設立年。0 以外が入るのは、同名で場所の違うものを期間で見分ける必要がある場合だけ
+  columns: ["pref", "county", "name", "abolished", "lat", "lng", "established"],
+  items: historical.map((h) => [h.pref, h.county, h.name, h.year, h.lat, h.lng, h.from]),
 }) + "\n");
 
 if (problems.length) {
