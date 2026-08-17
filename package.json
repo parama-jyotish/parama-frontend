@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test \"src/**/*.test.ts\"",
-    "build:municipalities": "node scripts/build-municipalities.mjs"
+    "build:municipalities": "node scripts/build-municipalities.mjs",
+    "verify:municipalities": "node scripts/verify-municipalities.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
