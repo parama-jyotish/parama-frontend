@@ -7,7 +7,14 @@
  *       Geolonia に町字が無い自治体と政令指定都市そのものの代表点は
  *       『Geoshape市区町村IDデータセット』（CODH作成、CC BY 4.0）で補っている。
  *
- * 生成日: 2026-08-17 ／ 1912件
+ * 件数: 1912件
+ * 入力（生成日ではなく、どの版から作ったかを記録している）:
+ *   geolonia latest.csv
+ *     sha256: 3edd04b15b787e2e0ae2fcaf3e8201346161048dc808e8f8ca5944d77d00a61b
+ *   soumu soumu-city-codes.xlsx (R6.1.1)
+ *     sha256: 7d04c8a7f6a6e76a7823a0414a8422bf2b26bb6070766971df76eab58ea6ff78
+ *   codh geoshape-city-geolod.csv (2023-10-18)
+ *     sha256: 48dab2531096e9ecd0970cd7955948004958fd3dfbcd0b23141f08a30d669ce5
  */
 
 export type MunicipalityRow = [

@@ -18,6 +18,7 @@
  */
 
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { inflateRawSync, gzipSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,18 +27,25 @@ import { placeKey } from "../src/lib/place-key.ts";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = join(ROOT, "scripts/.cache");
 
+/**
+ * version は生成物へ記録する版の表示名。**URL を差し替えるときは必ず一緒に直すこと。**
+ * Geolonia は毎月更新される単一 URL で版が名乗られていないため、SHA-256 だけで識別する。
+ */
 const SOURCES = {
   geolonia: {
     url: "https://raw.githubusercontent.com/geolonia/japanese-addresses/master/data/latest.csv",
     file: "latest.csv",
+    version: "",
   },
   soumu: {
     url: "https://www.soumu.go.jp/main_content/000925835.xlsx",
     file: "soumu-city-codes.xlsx",
+    version: "R6.1.1",
   },
   codh: {
     url: "https://geonlp.ex.nii.ac.jp/dictionary/geoshape-city/geoshape-city-geolod.csv",
     file: "geoshape-city-geolod.csv",
+    version: "2023-10-18",
   },
 };
 
@@ -612,7 +620,21 @@ if (merged.length) {
 }
 
 // ── 書き出し ────────────────────────────────────────────
-const stamp = new Date().toISOString().slice(0, 10);
+/**
+ * 生成日ではなく入力データの版を記録する。
+ *
+ * 生成日を入れると、元データが1バイトも変わっていなくても実行するたびに差分が出て、
+ * 「データが変わったのか日付が変わっただけなのか」がレビューで区別できなくなる。
+ * 知りたいのは「いつ実行したか」ではなく「どの版から作ったか」なので、そちらを記録する。
+ */
+const sourceVersions = Object.fromEntries(
+  Object.entries(SOURCES).map(([key, { file, version }]) => [key, {
+    file,
+    ...(version ? { version } : {}),
+    sha256: createHash("sha256").update(readFileSync(join(CACHE, file))).digest("hex"),
+  }])
+);
+
 const write = (path, contents) => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, contents);
@@ -632,7 +654,11 @@ write(join(ROOT, "src/data/municipalities.ts"), `\
  *       Geolonia に町字が無い自治体と政令指定都市そのものの代表点は
  *       『Geoshape市区町村IDデータセット』（CODH作成、CC BY 4.0）で補っている。
  *
- * 生成日: ${stamp} ／ ${current.length}件
+ * 件数: ${current.length}件
+ * 入力（生成日ではなく、どの版から作ったかを記録している）:
+${Object.entries(sourceVersions)
+  .map(([key, v]) => ` *   ${key} ${v.file}${v.version ? ` (${v.version})` : ""}\n *     sha256: ${v.sha256}`)
+  .join("\n")}
  */
 
 export type MunicipalityRow = [
@@ -652,8 +678,8 @@ ${current.map((m) => `  ${JSON.stringify([m.code, m.pref, m.county, m.name, m.ka
 `);
 
 write(join(ROOT, "public/data/municipalities-historical.json"), JSON.stringify({
-  generated: stamp,
   source: "歴史的行政区域データセットβ版『Geoshape市区町村IDデータセット』（CODH作成、CC BY 4.0）",
+  sourceVersions,
   // abolished は廃止年。0 は「廃止済みだが年が分からない」（CODH の記録漏れ・2023年10月以降の廃止）
   // established は設立年。0 以外が入るのは、同名で場所の違うものを期間で見分ける必要がある場合だけ
   columns: ["pref", "county", "name", "abolished", "lat", "lng", "established"],
