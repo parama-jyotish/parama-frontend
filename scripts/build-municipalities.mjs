@@ -443,6 +443,38 @@ function crossCheck(items, soumu) {
 const SAME_PLACE_KM = 1;
 
 /**
+ * 代表点が SAME_PLACE_KM 以内で connect している点どうしを、同じ場所としてまとめる。
+ *
+ * 総当たりで結び、連結成分を取る（union-find 相当）。逐次に「各クラスタの先頭とだけ
+ * 比べて入れる」方式だと、A-B と B-C が近く A-C が遠いときに**入力順で結果が変わり**、
+ * CSV の並びが変わるだけで生成物が変わってしまう。ここは順序に依存させない。
+ *
+ * 1グループの件数は多くて数件なので総当たりで十分。
+ */
+function clusterByProximity(entries) {
+  const parent = entries.map((_, i) => i);
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const a = entries[i];
+      const b = entries[j];
+      if (distanceKm(a.lat, a.lng, b.lat, b.lng) > SAME_PLACE_KM) continue;
+      const [ra, rb] = [find(i), find(j)];
+      // 常に小さい添字へ寄せる。どちらへ寄せるかで結果が変わらないようにする
+      if (ra !== rb) parent[Math.max(ra, rb)] = Math.min(ra, rb);
+    }
+  }
+  const byRoot = new Map();
+  entries.forEach((e, i) => {
+    const root = find(i);
+    if (!byRoot.has(root)) byRoot.set(root, []);
+    byRoot.get(root).push(e);
+  });
+  // 添字順に返す（クラスタの並びも入力順に依存させない）
+  return [...byRoot.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+}
+
+/**
  * valid_to が入っているものを廃止済みとして採る。1920年より前に廃止された区域は
  * フォームの生年（1920年以降）では選びようがないので落とす。
  *
@@ -494,15 +526,13 @@ function buildHistorical(current, rows) {
   const out = [];
   const split = [];
   for (const entries of groups.values()) {
-    const clusters = [];
-    for (const e of entries) {
-      const near = clusters.find((c) => distanceKm(c[0].lat, c[0].lng, e.lat, e.lng) <= SAME_PLACE_KM);
-      if (near) near.push(e);
-      else clusters.push([e]);
-    }
+    const clusters = clusterByProximity(entries);
     for (const cluster of clusters) {
-      // 同じ場所の村→町→市は1件にまとめ、廃止年は最も新しいものを採る
-      const latest = cluster.reduce((a, b) => (b.year > a.year ? b : a));
+      // 同じ場所の村→町→市は1件にまとめ、廃止年が最も新しいものを代表にする。
+      // 廃止年が並んだときは座標で決める（入力順で代表が変わらないようにする）
+      const latest = [...cluster].sort(
+        (a, b) => b.year - a.year || b.lat - a.lat || b.lng - a.lng
+      )[0];
       out.push({
         ...latest,
         // 期間で見分ける必要があるとき（同名で場所が違うとき）だけ設立年を持たせる。
@@ -554,7 +584,12 @@ process.stderr.write(`補正後: ${current.length}件（東京都 ${current.filt
 crossCheck(current, [...soumu.municipalities, ...soumu.designatedCities]);
 
 const historical = buildHistorical(current, codh);
-historical.sort((a, b) => (a.pref + a.county + a.name).localeCompare(b.pref + b.county + b.name, "ja"));
+// 同名で場所の違うもの（新治村）は名前だけでは並びが決まらないので、廃止年・座標まで見て
+// 完全に決まるようにする。並びが実行ごとに変わると差分が読めなくなる
+historical.sort((a, b) =>
+  (a.pref + a.county + a.name).localeCompare(b.pref + b.county + b.name, "ja") ||
+  a.year - b.year || a.lat - b.lat || a.lng - b.lng
+);
 process.stderr.write(`廃止済み: ${historical.length}件\n`);
 
 // 衝突の報告（実装が使う索引は実行時に作るので、ここでは規模の確認のみ）
