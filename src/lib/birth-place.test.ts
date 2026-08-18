@@ -350,8 +350,11 @@ describe("廃止マスターの取得に失敗したとき", () => {
 // ── /api/start へ送る形 ──
 describe("送信ペイロード", () => {
   test("マスターで解決できたものは緯度経度を添える", async () => {
+    // 座標はマスターから引く。ここで確かめたいのはペイロードの形であって座標の正しさではない
+    // （座標が本当にその自治体内にあるかは scripts/verify-municipalities.mjs が見る）
+    const [, , , , , lat, lng] = MUNICIPALITIES.find((m) => m[3] === "八丈町")!;
     const payload = birthPlacePayload(await resolveBirthPlace("東京都八丈町"), null);
-    assert.deepEqual(payload, { birth_place: "東京都八丈町", latitude: 33.12091, longitude: 139.79154 });
+    assert.deepEqual(payload, { birth_place: "東京都八丈町", latitude: lat, longitude: lng });
   });
 
   test("廃止された市区町村は注記を付けずに地名だけ送る", async () => {

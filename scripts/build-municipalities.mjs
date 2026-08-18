@@ -226,22 +226,69 @@ async function buildFromGeolonia() {
     if (Number.isFinite(lat) && Number.isFinite(lng)) { entry.lats.push(lat); entry.lngs.push(lng); }
   }
   const out = [];
+  const offCenter = [];
   for (const e of byCode.values()) {
     if (!e.lats.length) { note(`座標を持つ町字が無い: ${e.pref}${e.fullName}（${e.code}）`); continue; }
     // 郡に属するのは町村だけ。末尾を町/村に限らないと「蒲郡市」の郡を郡名と誤認し、
     // county="蒲郡" / name="市" のように壊れる（大和郡山市・小郡市も同様）。
     const gun = e.fullName.match(/^(.+郡)(.+[町村])$/);
+    const point = representativePoint(e.lats, e.lngs);
+    if (point.shifted > REPORT_OFF_CENTER_KM) {
+      offCenter.push(`${e.pref}${e.fullName} ${point.shifted.toFixed(1)}km`);
+    }
     out.push({
       code: e.code,
       pref: e.pref,
       county: gun ? gun[1] : "",
       name: gun ? gun[2] : e.fullName,
       kana: e.kana,
-      lat: round5(median(e.lats)),
-      lng: round5(median(e.lngs)),
+      lat: round5(point.lat),
+      lng: round5(point.lng),
     });
   }
+  if (offCenter.length) {
+    // 誤りではないが、単一の点で代表しにくい形の自治体。データ更新で増減を見るために出す
+    offCenter.sort();
+    process.stderr.write(
+      `  中央から離れた町字を代表点にした自治体（凹形・飛地・細長い形）: ${offCenter.length}件\n` +
+      `    ${offCenter.join(" / ")}\n`
+    );
+  }
   return out;
+}
+
+/** 中央値がこれ以上ずれて実在の町字へ寄った場合に報告する。 */
+const REPORT_OFF_CENTER_KM = 3;
+
+/**
+ * 代表点を選ぶ。**中央値そのものは使わず、中央値に最も近い実在の町字を採る（メドイド）。**
+ *
+ * 緯度と経度を独立に中央値化した点は、どの町字とも一致しない架空の位置になりうる。
+ * 凹形・飛地・細長い形の自治体では、その点が**区域の外**に落ちる。全1,912件を
+ * Nominatim の逆引きで検証して実際に5件見つかった（2026-08-18）:
+ *
+ *   北海道沙流郡日高町       中央値が平取町の中（52km四方に分断された飛地の隙間）
+ *   山梨県南都留郡富士河口湖町 中央値が鳴沢村の中（鳴沢村を囲む凹形）
+ *   岐阜県本巣市            中央値が大野町の中（南北37km×東西13kmの細長い形）
+ *   愛知県愛西市            中央値が津島市の中（津島市を囲む形）
+ *   東京都小笠原村          中央値が母島側（父島と母島に分かれる。別途 CODH で上書き）
+ *
+ * 実在の町字を採れば、区域の外に出ることは原理的に無くなる。
+ */
+function representativePoint(lats, lngs) {
+  const centerLat = median(lats);
+  const centerLng = median(lngs);
+  let best = 0;
+  let bestDistance = Infinity;
+  for (let i = 0; i < lats.length; i++) {
+    const d = distanceKm(centerLat, centerLng, lats[i], lngs[i]);
+    // 等距離のときは座標で決める（町字の並び順で代表点が変わらないようにする）
+    if (d < bestDistance || (d === bestDistance && (lats[i] - lats[best] || lngs[i] - lngs[best]) < 0)) {
+      bestDistance = d;
+      best = i;
+    }
+  }
+  return { lat: lats[best], lng: lngs[best], shifted: bestDistance };
 }
 
 // ── 2. 総務省コード表 ───────────────────────────────────
