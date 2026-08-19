@@ -155,7 +155,7 @@ export default function PrivacyPage() {
                   href="https://www.ppc.go.jp/personalinfo/legal/kaiseihogohou/#gaikoku"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-c-teal underline underline-offset-2 hover:opacity-70 transition-opacity"
+                  className="text-c-teal underline underline-offset-2 hover:opacity-70 transition-opacity break-all"
                 >
                   https://www.ppc.go.jp/personalinfo/legal/kaiseihogohou/#gaikoku
                 </a>
