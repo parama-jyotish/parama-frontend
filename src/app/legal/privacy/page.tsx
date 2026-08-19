@@ -17,8 +17,12 @@ export const metadata = {
     株式会社ミエルカ    → 株式会社ミショナ（L Message 利用規約「L Message 株式会社ミショナが
                         提供する…」。「ミエルカ」の表記は同社サイトに存在しない）
 
-  ⚠ 未検証: OpenAI, L.L.C. の法人格表記。openai.com がボット判定により到達できず
-     一次情報を確認できていない。公開前に確認すること（docs/22 §3-2）。
+    OpenAI, L.L.C. → OpenAI, LLC（openai.com/ja-JP/policies/developer-apps-terms/
+                        「お客様と OpenAI, LLC（「OpenAI」）との間の契約を締結します。
+                        欧州経済領域又はスイスにお住まいの場合、契約は OpenAI Ireland Ltd.
+                        との間で成立します」。日本は EEA/スイス圏外のため前者）
+                        ※ 同ページの通知条項では「OpenAI, L.L.C.」表記も併用されている。
+                          契約主体を定める条項の表記に合わせた。
 
   ⚠ 本ポリシーは運用義務を生む。第11項で「お届けから6か月で自動消去」と明示しているため、
      H-4 バッチ（毎日3時）の停止はポリシー違反になる（docs/22 STEP 9-3）。
@@ -236,7 +240,7 @@ export default function PrivacyPage() {
                       <td className="py-2">鑑定文の生成（AI処理）</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4">OpenAI, L.L.C.</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">OpenAI, LLC</td>
                       <td className="py-2 pr-4 whitespace-nowrap">アメリカ合衆国</td>
                       <td className="py-2">
                         鑑定文の生成（AI処理。Anthropic社のサービスが一時的に利用できない場合の予備）
@@ -258,7 +262,7 @@ export default function PrivacyPage() {
                 前項の委託先のうち、日本国外に所在する事業者（Supabase, Inc. ／
                 Railway Corp. ／ Vercel Inc. ／ Cloudflare, Inc. ／ Plus Five
                 Five, Inc. ／ MailerLite Limited ／ Anthropic PBC ／ OpenAI,
-                L.L.C.）への個人情報の取扱いの委託は、個人情報保護法第28条にいう「外国にある第三者への個人データの提供」に該当します。
+                LLC）への個人情報の取扱いの委託は、個人情報保護法第28条にいう「外国にある第三者への個人データの提供」に該当します。
               </p>
               <p className="mb-3">
                 各委託先の所在国における個人情報の保護に関する制度については、個人情報保護委員会のウェブサイト（
