@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -91,7 +92,7 @@ export default function TermsPage() {
                 第7条（鑑定の対象外事項）
               </h2>
               <p className="mb-3">
-                本サービスは、以下に該当する事項に関する助言、判断、予測を行うものではありません。とくに<span className="underline">医療・健康、法律、投資・資産運用に関する事項</span>については、利用者は必ず各分野の専門家にご相談ください。
+                本サービスは、以下に該当する事項に関する助言、判断、予測を行うものではありません。とくに<span className="font-bold">医療・健康、法律、投資・資産運用に関する事項</span>については、利用者は必ず各分野の専門家にご相談ください。
               </p>
               <ol className="list-decimal pl-6 space-y-1">
                 <li>医療、健康に関する診断・治療の判断</li>
@@ -217,7 +218,14 @@ export default function TermsPage() {
                 第11条（個人情報の取扱い）
               </h2>
               <p>
-                利用者の個人情報（出生データを含みます）の取扱いについては、当方が別途定めるプライバシーポリシーに従うものとします。
+                利用者の個人情報（出生データを含みます）の取扱いについては、当方が別途定める
+                <Link
+                  href="/legal/privacy"
+                  className="text-c-teal underline underline-offset-2 hover:opacity-70 transition-opacity"
+                >
+                  プライバシーポリシー
+                </Link>
+                に従うものとします。
               </p>
             </section>
 
@@ -299,6 +307,7 @@ export default function TermsPage() {
             <hr className="border-border" />
 
             <p className="text-sm text-c-teal-green">制定日：2026年6月6日</p>
+            <p className="text-sm text-c-teal-green">最終改定日：2026年8月19日</p>
           </div>
         </div>
       </main>
