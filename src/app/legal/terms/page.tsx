@@ -149,22 +149,66 @@ export default function TermsPage() {
                 第10条（知的財産権）
               </h2>
               <p>
-                本サービスに関するコンテンツ（鑑定結果のテキスト、ウェブサイトのデザイン、ロゴ、文章、画像等を含みますがこれに限りません、ただしラグナ鑑定結果表示画面の星座画像を除きます）に関する著作権、商標権その他の知的財産権は、すべて当方に帰属します。
+                本サービスに関するコンテンツ（鑑定結果のテキスト、ウェブサイトのデザイン、ロゴ、文章、画像等を含みますがこれに限りません）に関する著作権、商標権その他の知的財産権は、すべて当方に帰属します。
               </p>
               {/*
-                【仮】第三者提供データのクレジット表示（確定はカズマ）。
-                いずれも CC BY 4.0 で、表示が利用条件に含まれるため公開前に必須。
-                CODH は『Geoshape市区町村IDデータセット』（CODH作成）という表記を
-                データセット配布ページで指定しているので、その形をそのまま使っている。
-                legal 配下は他ページも含めリンク・URL を一切使っていないため、
-                ライセンス名を文言で示すにとどめた。リンクにするかはカズマの判断。
+                【仮】第三者の権利物の表示（確定はカズマ）。
+                出生地データ2件はいずれも CC BY 4.0 で、表示が利用条件に含まれるため公開前に必須。
+                CC BY 4.0 §3(a)(1) が求めるもの: 作成者の表示 / ライセンスへの参照 /
+                免責への言及 / 素材への URI / **改変した旨の明示**（§3(a)(1)(b)）。
+                当方は町字を市区町村へ集約し代表点を算出しているため改変に該当する。
+                CODH は配布ページで『Geoshape市区町村IDデータセット』（CODH作成）という
+                表記を指定しているため、その形をそのまま使っている。
+                星座画像は Freepik の premium ライセンス（docs/14 Part B）。
+                クレジット表記義務は無いが、当方帰属ではないことを明示する趣旨で併記する。
               */}
               <p className="mt-3">
-                本サービスでは、入力された出生地から座標を求める処理に、以下の第三者が提供するデータを利用しています。これらのデータはクリエイティブ・コモンズ 表示 4.0 国際（CC BY 4.0）ライセンスのもとで提供されており、その著作権は各提供者に帰属します。
+                ただし、以下に挙げるものについては、それぞれの提供者に著作権が帰属し、各提供者の定める利用規定が適用されます。当方に権利が帰属するものではありません。
               </p>
-              <ul className="list-disc pl-6 space-y-1 mt-2">
-                <li>『Geolonia 住所データ』（株式会社Geolonia）</li>
-                <li>『Geoshape市区町村IDデータセット』（CODH作成）</li>
+              <ul className="list-disc pl-6 space-y-3 mt-3">
+                <li>
+                  出生地の座標を判定するために利用している次のデータ。いずれも
+                  クリエイティブ・コモンズ 表示 4.0 国際（CC BY 4.0）ライセンスのもとで
+                  提供されています。当方は、これらのデータを町字単位から市区町村単位へ集約し、
+                  その代表点となる座標を算出するなどの改変を行ったうえで利用しています。
+                  保証の否認を含むライセンスの全文は、次のページをご参照ください。
+                  <br />
+                  <a
+                    href="https://creativecommons.org/licenses/by/4.0/deed.ja"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-c-teal underline underline-offset-2 hover:opacity-70 transition-opacity break-all"
+                  >
+                    https://creativecommons.org/licenses/by/4.0/deed.ja
+                  </a>
+                  <ul className="list-disc pl-6 space-y-1 mt-2">
+                    <li>
+                      『Geolonia 住所データ』（株式会社Geolonia）
+                      <br />
+                      <a
+                        href="https://github.com/geolonia/japanese-addresses"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-c-teal underline underline-offset-2 hover:opacity-70 transition-opacity break-all"
+                      >
+                        https://github.com/geolonia/japanese-addresses
+                      </a>
+                    </li>
+                    <li>
+                      『Geoshape市区町村IDデータセット』（CODH作成）
+                      <br />
+                      <a
+                        href="https://geoshape.ex.nii.ac.jp/city/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-c-teal underline underline-offset-2 hover:opacity-70 transition-opacity break-all"
+                      >
+                        https://geoshape.ex.nii.ac.jp/city/
+                      </a>
+                    </li>
+                  </ul>
+                </li>
+                <li>ラグナ鑑定結果表示画面の星座画像</li>
               </ul>
             </section>
 
