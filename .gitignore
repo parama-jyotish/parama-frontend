@@ -66,3 +66,8 @@ public/images/notuse/
 writing_craft_guide.md
 PARAMA_frontend_実装指示.md
 src/app/legal/src/
+
+# エージェント向け作業ルールの入口（ローカルのみ・2026-08-18）
+# Codex CLI は cwd 直下の AGENTS.md しか自動で読まない（親を遡らない）ため各リポジトリに置く。
+# 実体は .claude/CLAUDE.md 側。リポジトリには含めない方針。
+AGENTS.md
