@@ -1,0 +1,456 @@
+/**
+ * 出生地入力の解決の単体テスト。
+ *
+ *   npm test
+ *
+ * 廃止された市区町村のマスターは実行時に fetch する設計なので、テストでは
+ * public/ のファイルを読んで返すスタブを差し込んでいる。
+ */
+
+import { test, describe, before } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+import {
+  normalizeBirthPlace,
+  resolveBirthPlace,
+  birthPlacePayload,
+  municipalityLabel,
+  type BirthPlaceResolution,
+} from "./birth-place.ts";
+import { MUNICIPALITIES } from "../data/municipalities.ts";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+before(() => {
+  const body = readFileSync(join(ROOT, "public/data/municipalities-historical.json"), "utf8");
+  globalThis.fetch = (async (url: string) => {
+    assert.equal(String(url), "/data/municipalities-historical.json");
+    return { ok: true, status: 200, json: async () => JSON.parse(body) };
+  }) as unknown as typeof fetch;
+});
+
+/** 解決結果を「種別＋要点」の短い文字列にして期待値と比べる。 */
+async function resolved(raw: string): Promise<string> {
+  const r: BirthPlaceResolution = await resolveBirthPlace(raw);
+  switch (r.kind) {
+    case "coords": return `coords ${r.value} (${r.label})`;
+    case "ambiguous": return `ambiguous ${r.candidates.length}: ${r.candidates.map(municipalityLabel).join(" / ")}`;
+    case "fallback": return `fallback ${r.value}`;
+    case "unknown": return `unknown ${r.reason}`;
+  }
+}
+
+// ── 座標入力（既存仕様。docs/29 §4-1 の26件から座標分を引き継ぐ） ──
+describe("座標入力", () => {
+  const cases: [string, string][] = [
+    ["35.68, 139.76", "35.68,139.76"],
+    ["35.68,139.76", "35.68,139.76"],
+    ["35.68 139.76", "35.68,139.76"],
+    ["３５.６８、１３９.７６", "35.68,139.76"],
+    ["N35.68 E139.76", "35.68,139.76"],
+    ["35.68N 139.76E", "35.68,139.76"],
+    ["35.68°N 139.76°E", "35.68,139.76"],
+    // 南半球・西半球。方角記号を落とすだけの実装だと北半球に化ける（docs/30 §4）
+    ["S33.8688 E151.2093", "-33.8688,151.2093"],
+    ["-34.6037,-58.3816", "-34.6037,-58.3816"],
+    ["S22.9068 W43.1729", "-22.9068,-43.1729"],
+    ["-1.2921,36.8219", "-1.2921,36.8219"],
+  ];
+  for (const [input, expected] of cases) {
+    test(input, async () => {
+      assert.equal(normalizeBirthPlace(input), expected);
+      assert.equal(await resolved(input), `coords ${expected} (${expected})`);
+    });
+  }
+
+  test("符号と方角の二重指定は受け付けない", () => {
+    assert.equal(normalizeBirthPlace("S-33.8688 E151.2093"), "S-33.8688 E151.2093");
+  });
+
+  test("範囲外の値は座標として扱わない", () => {
+    assert.equal(normalizeBirthPlace("91.0, 139.76"), "91.0, 139.76");
+  });
+});
+
+// ── 現行の市区町村を一意に解決する ──
+describe("現行の市区町村", () => {
+  const cases: [string, string][] = [
+    ["東京都世田谷区", "東京都世田谷区"],
+    ["世田谷区", "東京都世田谷区"],
+    ["東京都世田谷区北沢2-24-8", "東京都世田谷区"],
+    ["宮城県仙台市青葉区中央1丁目1-1", "宮城県仙台市青葉区"],
+    ["仙台市青葉区", "宮城県仙台市青葉区"],
+    // 政令市を区まで書かない場合。Geolonia は区単位でしか持たないので明示的に足している
+    ["仙台市", "宮城県仙台市"],
+    ["浜松市", "静岡県浜松市"],
+    // 郡部。郡を書いても省いてもよい
+    ["宮城県宮城郡松島町", "宮城県宮城郡松島町"],
+    ["宮城県松島町", "宮城県宮城郡松島町"],
+    ["松島町", "宮城県宮城郡松島町"],
+    ["東京都西多摩郡奥多摩町", "東京都西多摩郡奥多摩町"],
+    ["奥多摩町", "東京都西多摩郡奥多摩町"],
+    // 島嶼部（今回の検証テーマ）
+    ["東京都八丈町", "東京都八丈町"],
+    ["八丈町", "東京都八丈町"],
+    ["利島村", "東京都利島村"],
+    ["東京都利島村", "東京都利島村"],
+    ["小笠原村", "東京都小笠原村"],
+    // 「市」を名前に含む市、ひらがな・カタカナの市町村名
+    ["市川市", "千葉県市川市"],
+    ["さいたま市浦和区", "埼玉県さいたま市浦和区"],
+    ["ニセコ町", "北海道虻田郡ニセコ町"],
+    ["南アルプス市", "山梨県南アルプス市"],
+    // 町名に数字を含む住所（北海道の「〜条〜丁目」）
+    ["北海道札幌市中央区北1条西2丁目", "北海道札幌市中央区"],
+    // 郵便番号付き・全角・前後の空白
+    ["〒130-0011 東京都墨田区石原1-1-1", "東京都墨田区"],
+    ["　東京都渋谷区　", "東京都渋谷区"],
+    // 表記ゆれ（ケ/ヶ・異体字）
+    ["袖ヶ浦市", "千葉県袖ケ浦市"],
+    ["袖ケ浦市", "千葉県袖ケ浦市"],
+    ["龍ケ崎市", "茨城県龍ケ崎市"],
+    ["竜ヶ崎市", "茨城県龍ケ崎市"],
+    ["高知県檮原町", "高知県高岡郡梼原町"],
+    ["高知県梼原町", "高知県高岡郡梼原町"],
+    // カナ入力（都道府県のカナは索引に持たないので、市区町村のカナのみ）
+    ["セタガヤク", "東京都世田谷区"],
+    ["せたがやく", "東京都世田谷区"],
+    ["まつしままち", "宮城県宮城郡松島町"],
+  ];
+  for (const [input, expected] of cases) {
+    test(`${input} → ${expected}`, async () => {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "coords", `期待は一意ヒットだが ${await resolved(input)}`);
+      assert.equal(r.kind === "coords" ? r.label : "", expected);
+    });
+  }
+});
+
+// ── 浜松市の区再編（2024-01-01、7区→3区） ──
+describe("浜松市の区再編", () => {
+  test("新しい区は現行マスターにある", async () => {
+    for (const [input, expected] of [
+      ["浜松市中央区", "静岡県浜松市中央区"],
+      ["浜松市浜名区", "静岡県浜松市浜名区"],
+      ["浜松市天竜区", "静岡県浜松市天竜区"],
+    ]) {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind === "coords" ? r.label : r.kind, expected);
+    }
+  });
+
+  test("旧区名は廃止済みとして解決する（2023年以前生まれの表記）", async () => {
+    const r = await resolveBirthPlace("静岡県浜松市浜北区");
+    assert.equal(r.kind, "coords");
+    assert.equal(r.kind === "coords" ? r.label : "", "静岡県浜松市浜北区（現在は廃止）");
+  });
+});
+
+// ── 同名衝突は候補提示にする（黙って一方へ寄せない） ──
+describe("同名の市区町村", () => {
+  test("北区（東京都と政令市の区）", async () => {
+    const r = await resolveBirthPlace("北区赤羽1-1-1");
+    assert.equal(r.kind, "ambiguous");
+    if (r.kind !== "ambiguous") return;
+    const labels = r.candidates.map(municipalityLabel);
+    assert.ok(labels.includes("東京都北区"), labels.join(" / "));
+    assert.ok(labels.includes("大阪府大阪市北区"), labels.join(" / "));
+    assert.ok(r.candidates.length >= 10, `候補 ${r.candidates.length}件`);
+  });
+
+  test("府中市（東京都・広島県）", async () => {
+    const r = await resolveBirthPlace("府中市");
+    assert.equal(r.kind, "ambiguous");
+    if (r.kind !== "ambiguous") return;
+    assert.deepEqual(r.candidates.map(municipalityLabel).sort(), ["広島県府中市", "東京都府中市"]);
+  });
+
+  test("都道府県を付ければ一意になる", async () => {
+    for (const [input, expected] of [
+      ["東京都府中市", "東京都府中市"],
+      ["広島県府中市", "広島県府中市"],
+      ["東京都北区", "東京都北区"],
+      ["大阪市北区", "大阪府大阪市北区"],
+      ["伊達市", null],
+      ["北海道伊達市", "北海道伊達市"],
+      ["福島県伊達市", "福島県伊達市"],
+    ] as [string, string | null][]) {
+      const r = await resolveBirthPlace(input);
+      if (expected === null) assert.equal(r.kind, "ambiguous", input);
+      else assert.equal(r.kind === "coords" ? r.label : r.kind, expected, input);
+    }
+  });
+
+  test("港区・青葉区・泉区も候補提示になる（docs/30 §3 の指摘）", async () => {
+    for (const input of ["港区", "青葉区", "泉区", "緑区", "中区", "旭区", "鶴見区"]) {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "ambiguous", `${input} → ${await resolved(input)}`);
+    }
+  });
+});
+
+// ── 旧市町村名（今回の主目的） ──
+describe("廃止された市区町村", () => {
+  const cases: [string, string][] = [
+    ["東京都保谷市", "東京都保谷市（2001年まで）"],
+    ["東京都保谷市東町1-1", "東京都保谷市（2001年まで）"],
+    ["保谷市", "東京都保谷市（2001年まで）"],
+    ["田無市", "東京都田無市（2001年まで）"],
+    ["埼玉県浦和市", "埼玉県浦和市（2001年まで）"],
+    ["大宮市", "埼玉県大宮市（2001年まで）"],
+    ["与野市", "埼玉県与野市（2001年まで）"],
+  ];
+  for (const [input, expected] of cases) {
+    test(`${input} → ${expected}`, async () => {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "coords", `期待は一意ヒットだが ${await resolved(input)}`);
+      assert.equal(r.kind === "coords" ? r.label : "", expected);
+    });
+  }
+
+  test("保谷市が Nominatim 誤答（京都市左京区）ではなく旧保谷市域に解決する", async () => {
+    const r = await resolveBirthPlace("東京都保谷市");
+    assert.equal(r.kind, "coords");
+    if (r.kind !== "coords") return;
+    const [lat, lng] = r.value.split(",").map(Number);
+    // 旧保谷市域（現 西東京市）。京都市左京区は 35.03,135.78 なので取り違えれば必ず落ちる
+    assert.ok(Math.abs(lat - 35.74) < 0.05, `lat=${lat}`);
+    assert.ok(Math.abs(lng - 139.56) < 0.05, `lng=${lng}`);
+  });
+
+  test("同じ名前が別の時代に別の場所で使われていたら、期間つきで選ばせる", async () => {
+    // 茨城県新治郡新治村は 1889〜1954（現かすみがうら市側）と 1955〜2006（現土浦市側）で
+    // 7.4km 離れている。新しい方だけを残すと、1954年以前生まれが黙って別の場所になる
+    const r = await resolveBirthPlace("茨城県新治郡新治村");
+    assert.equal(r.kind, "ambiguous", `→ ${await resolved("茨城県新治郡新治村")}`);
+    if (r.kind !== "ambiguous") return;
+
+    const labels = r.candidates.map(municipalityLabel).sort();
+    assert.deepEqual(labels, [
+      "茨城県新治郡新治村（1889〜1954年）",
+      "茨城県新治郡新治村（1955〜2006年）",
+    ]);
+
+    // 候補の座標が実際に離れていること（同じ場所なら分ける意味がない）
+    const [a, b] = r.candidates;
+    const km = Math.hypot(
+      (a.lat - b.lat) * 111.32,
+      (a.lng - b.lng) * 111.32 * Math.cos((a.lat * Math.PI) / 180)
+    );
+    assert.ok(km > 5, `候補の距離が ${km.toFixed(1)}km しかない`);
+
+    // 選べば送信できる
+    const payload = birthPlacePayload(r, r.candidates[0]);
+    assert.equal(payload?.birth_place, "茨城県新治郡新治村");
+    assert.equal(payload?.latitude, r.candidates[0].lat);
+  });
+
+  test("同じ場所での村→町→市の昇格は1件にまとめる", async () => {
+    // 保谷は村→町→市と変わったが代表点は同じ。期間で分けず、最後の姿だけを持つ
+    const r = await resolveBirthPlace("東京都保谷市");
+    assert.equal(r.kind, "coords");
+    assert.equal(r.kind === "coords" ? r.label : "", "東京都保谷市（2001年まで）");
+  });
+
+  test("現行の市区町村を廃止済みより優先する", async () => {
+    // 「大宮区」はさいたま市に現存し、「大宮市」は廃止済み。取り違えない
+    const now = await resolveBirthPlace("さいたま市大宮区");
+    assert.equal(now.kind === "coords" ? now.label : "", "埼玉県さいたま市大宮区");
+  });
+});
+
+// ── マスター全件 ──
+describe("マスター全件の整合", () => {
+  test("すべての市区町村が、都道府県から書けば自分自身の座標に解決する", async () => {
+    // 空のマスターを回して素通りするのを防ぐ（現行1,912件。合併で減っても1,700は下回らない）
+    assert.ok(MUNICIPALITIES.length > 1700, `マスターが ${MUNICIPALITIES.length}件しかない`);
+    const failures: string[] = [];
+    for (const [, pref, county, name, , lat, lng] of MUNICIPALITIES) {
+      const full = `${pref}${county}${name}`;
+      const r = await resolveBirthPlace(full);
+      if (r.kind !== "coords") {
+        failures.push(`${full} → ${r.kind}`);
+      } else if (r.value !== `${lat},${lng}`) {
+        failures.push(`${full} → ${r.value}（期待 ${lat},${lng}）`);
+      }
+    }
+    assert.deepEqual(failures.slice(0, 10), [], `${MUNICIPALITIES.length}件中 ${failures.length}件が不一致`);
+  });
+
+  test("正規化で同じキーになる別の市区町村は、候補提示にして取り違えない", async () => {
+    // placeKey が 嶋→島 を吸収するため「鹿嶋市」と「鹿島市」は同じキーになる
+    const r = await resolveBirthPlace("鹿島市");
+    assert.equal(r.kind, "ambiguous");
+    if (r.kind !== "ambiguous") return;
+    assert.deepEqual(r.candidates.map(municipalityLabel).sort(), ["佐賀県鹿島市", "茨城県鹿嶋市"]);
+
+    // 都道府県を付ければどちらも一意に決まる
+    for (const [input, expected] of [
+      ["茨城県鹿嶋市", "茨城県鹿嶋市"],
+      ["佐賀県鹿島市", "佐賀県鹿島市"],
+      ["茨城県鹿島市", "茨城県鹿嶋市"], // 誤字（島/嶋）でも正しい方へ寄る
+    ]) {
+      const hit = await resolveBirthPlace(input);
+      assert.equal(hit.kind === "coords" ? hit.label : hit.kind, expected, input);
+    }
+  });
+});
+
+// ── 廃止マスターの取得失敗 ──
+/**
+ * 廃止マスターの索引はモジュール内にキャッシュされるため、取得失敗を試すには
+ * 読み直しが要る。クエリを付けると Node は別インスタンスとして読む。
+ * specifier を変数にしているのは、クエリ付きのパスを TypeScript が解決できないため。
+ */
+async function reloadModule(tag: string): Promise<typeof import("./birth-place.ts")> {
+  const specifier = `./birth-place.ts?${tag}`;
+  return import(specifier);
+}
+
+describe("廃止マスターの取得に失敗したとき", () => {
+  test("送信させず、復旧後は引き直せる", async () => {
+    const working = globalThis.fetch;
+    // モジュール内に索引がキャッシュされるので、取得失敗を試すには読み直しが要る
+    const fresh = await reloadModule("historical-fetch-failure");
+
+    globalThis.fetch = (async () => { throw new Error("ネットワーク断"); }) as unknown as typeof fetch;
+    try {
+      const failed = await fresh.resolveBirthPlace("東京都保谷市");
+      assert.equal(failed.kind, "unknown");
+      assert.equal(failed.kind === "unknown" ? failed.reason : "", "lookup-failed");
+
+      // 現行マスターだけで足りる入力は、取得に失敗しても解決できる
+      const current = await fresh.resolveBirthPlace("東京都世田谷区");
+      assert.equal(current.kind, "coords");
+    } finally {
+      globalThis.fetch = working;
+    }
+
+    // 失敗時にキャッシュを捨てているので、次の入力で取り直せる
+    const retried = await fresh.resolveBirthPlace("東京都保谷市");
+    assert.equal(retried.kind === "coords" ? retried.label : retried.kind, "東京都保谷市（2001年まで）");
+  });
+
+  test("404 が返った場合も送信させない", async () => {
+    const working = globalThis.fetch;
+    const fresh = await reloadModule("historical-404");
+    globalThis.fetch = (async () => ({ ok: false, status: 404 })) as unknown as typeof fetch;
+    try {
+      const r = await fresh.resolveBirthPlace("東京都保谷市");
+      assert.equal(r.kind === "unknown" ? r.reason : r.kind, "lookup-failed");
+    } finally {
+      globalThis.fetch = working;
+    }
+  });
+});
+
+// ── /api/start へ送る形 ──
+describe("送信ペイロード", () => {
+  test("マスターで解決できたものは緯度経度を添える", async () => {
+    // 座標はマスターから引く。ここで確かめたいのはペイロードの形であって座標の正しさではない
+    // （座標が本当にその自治体内にあるかは scripts/verify-municipalities.mjs が見る）
+    const [, , , , , lat, lng] = MUNICIPALITIES.find((m) => m[3] === "八丈町")!;
+    const payload = birthPlacePayload(await resolveBirthPlace("東京都八丈町"), null);
+    assert.deepEqual(payload, { birth_place: "東京都八丈町", latitude: lat, longitude: lng });
+  });
+
+  test("廃止された市区町村は注記を付けずに地名だけ送る", async () => {
+    // 画面では「（2001年まで）」と出すが、送信・保存する地名には含めない
+    const payload = birthPlacePayload(await resolveBirthPlace("東京都保谷市"), null);
+    assert.equal(payload?.birth_place, "東京都保谷市");
+    assert.ok(Math.abs((payload?.latitude ?? 0) - 35.74) < 0.05);
+    assert.ok(Math.abs((payload?.longitude ?? 0) - 139.56) < 0.05);
+  });
+
+  test("郡は地名に含める", async () => {
+    const payload = birthPlacePayload(await resolveBirthPlace("松島町"), null);
+    assert.equal(payload?.birth_place, "宮城県宮城郡松島町");
+  });
+
+  test("緯度経度を直接入力した場合はその値をそのまま送る", async () => {
+    assert.deepEqual(
+      birthPlacePayload(await resolveBirthPlace("35.68, 139.76"), null),
+      { birth_place: "35.68,139.76", latitude: 35.68, longitude: 139.76 }
+    );
+    // 南半球・西半球の符号が落ちないこと
+    assert.deepEqual(
+      birthPlacePayload(await resolveBirthPlace("S33.8688 W151.2093"), null),
+      { birth_place: "-33.8688,-151.2093", latitude: -33.8688, longitude: -151.2093 }
+    );
+  });
+
+  test("辞書外は地名だけを送る（緯度経度のキーを持たない）", async () => {
+    const payload = birthPlacePayload(await resolveBirthPlace("シドニー"), null);
+    assert.deepEqual(payload, { birth_place: "シドニー" });
+    assert.equal("latitude" in payload!, false);
+  });
+
+  test("候補が未選択のあいだ、および解決できないものは送れない", async () => {
+    assert.equal(birthPlacePayload(await resolveBirthPlace("北区"), null), null);
+    assert.equal(birthPlacePayload(await resolveBirthPlace("東京都せたがや区"), null), null);
+  });
+
+  test("候補を選べば、その市区町村の座標で送れる", async () => {
+    const r = await resolveBirthPlace("北区");
+    assert.equal(r.kind, "ambiguous");
+    if (r.kind !== "ambiguous") return;
+    const osaka = r.candidates.find((m) => m.pref === "大阪府")!;
+    assert.deepEqual(birthPlacePayload(r, osaka), {
+      birth_place: "大阪府大阪市北区",
+      latitude: osaka.lat,
+      longitude: osaka.lng,
+    });
+  });
+});
+
+// ── 辞書外 ──
+describe("辞書に無い入力", () => {
+  test("海外の地名はそのまま送る（Nominatim に委ねる）", async () => {
+    for (const [input, expected] of [
+      ["Paris", "Paris"],
+      ["シドニー", "シドニー"],
+      ["Sydney, Australia", "Sydney, Australia"],
+      ["ブエノスアイレス", "ブエノスアイレス"],
+      ["ニューヨーク市", "ニューヨーク市"],
+    ]) {
+      assert.equal(await resolved(input), `fallback ${expected}`, input);
+    }
+  });
+
+  test("市区町村を含まない日本語もそのまま送る", async () => {
+    for (const input of ["仙台", "東京", "沖縄県", "西新宿2-8-1"]) {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "fallback", `${input} → ${await resolved(input)}`);
+    }
+  });
+
+  test("都道府県まで書かれていて解決できないものは送らずエラー", async () => {
+    for (const input of ["東京都せたがや区", "架空県架空市", "東京都存在しない町"]) {
+      assert.equal(await resolved(input), "unknown not-found", input);
+    }
+  });
+
+  test("漢字圏の海外の地名は弾かずに送る", async () => {
+    // 「釜山市」「台北市」は日本の住所と字面で見分けられない。都道府県が無いので素通しする
+    for (const input of ["韓国釜山市", "中国北京市朝陽区", "台湾台北市", "ソウル特別市", "セブ市"]) {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "fallback", `${input} → ${await resolved(input)}`);
+    }
+  });
+
+  test("都道府県が無く解決できないものは送る（400 という見えるエラーで返る）", async () => {
+    // 黙って誤った場所へ解決されるより、バックエンドに 400 を返させるほうが安全
+    for (const input of ["せたがや区", "存在しない町"]) {
+      const r = await resolveBirthPlace(input);
+      assert.equal(r.kind, "fallback", `${input} → ${await resolved(input)}`);
+    }
+  });
+
+  test("空文字", async () => {
+    assert.equal(await resolved(""), "fallback ");
+    assert.equal(normalizeBirthPlace(""), "");
+  });
+});

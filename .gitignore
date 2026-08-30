@@ -56,6 +56,9 @@ credentials/
 # User Bkup
 *.bkup
 
+# 市区町村マスターの生成元データ（50MB超。生成物のみコミットする）
+scripts/.cache/
+
 # ローカル作業ファイル（2026-07-23 整理）
 session_log_*
 *.OLD
