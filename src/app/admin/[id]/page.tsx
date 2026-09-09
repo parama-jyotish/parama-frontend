@@ -6,7 +6,9 @@
  * - レコード詳細 + AI 生成テキスト（reading_text）の表示
  * - 編集: reading_text_edited に保存（NULL なら配信時に原文を使用）
  * - 承認: ready_for_review → approved（approved_at 記録）
+ * - 配信キャンセル: approved → ready_for_review（approved_at を NULL に戻す）
  * - 手動復帰: エラー status をマトリクス許容の遷移で戻す
+ * - 生成中（generating）はポーリングして完了を待つ
  */
 
 import { use, useCallback, useEffect, useState } from "react";
@@ -14,6 +16,7 @@ import Link from "next/link";
 import {
   ADMIN_ACTIONS,
   getSupabase,
+  isDeliveryBatchWindow,
   regenerateReading,
   transitionStatus,
   type PendingReading,
@@ -28,6 +31,12 @@ const btnStyle: React.CSSProperties = {
   color: "white",
   fontSize: "0.875rem",
   cursor: "pointer",
+};
+
+/** アクションボタンの色。承認＝青、キャンセル＝オレンジ、その他（再生成・再配信）＝緑。 */
+const ACTION_COLORS: Record<string, string> = {
+  ready_for_review: "#0b7492",
+  approved: "#d97a2b",
 };
 
 const labelStyle: React.CSSProperties = {
@@ -51,25 +60,56 @@ export default function AdminDetailPage({
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // 保存直後は無効化し、テキストエリアにフォーカスが入ったら復帰させる
+  const [editSaved, setEditSaved] = useState(false);
 
-  const loadRecord = useCallback(async () => {
-    const { data, error } = await getSupabase()
-      .from("pending_readings")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) {
-      setMessage(`読み込みエラー: ${error.message}`);
-    } else {
-      setRecord(data);
-      setEditedText(data?.reading_text_edited ?? "");
-    }
-    setLoaded(true);
-  }, [id]);
+  /**
+   * レコードを再取得する。
+   *
+   * preserveEdit=true のときは編集中のテキストを上書きしない
+   * （生成中ポーリングで入力内容が消えるのを防ぐ）。
+   */
+  const loadRecord = useCallback(
+    async (preserveEdit = false) => {
+      const { data, error } = await getSupabase()
+        .from("pending_readings")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) {
+        setMessage(`読み込みエラー: ${error.message}`);
+      } else {
+        setRecord(data);
+        if (!preserveEdit) setEditedText(data?.reading_text_edited ?? "");
+      }
+      setLoaded(true);
+      return data as PendingReading | null;
+    },
+    [id]
+  );
 
   useEffect(() => {
     loadRecord();
   }, [loadRecord]);
+
+  // 生成中は完了を待って自動反映する。status が generating を抜けたら止める。
+  useEffect(() => {
+    if (record?.status !== "generating") return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const next = await loadRecord(true);
+        if (next && next.status !== "generating") clearInterval(timer);
+      } catch {
+        // 一時的な取得失敗ではポーリングを止めない（次回に再試行する）
+      }
+    }, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [record?.status, loadRecord]);
 
   const saveEdit = async () => {
     if (!record) return;
@@ -83,6 +123,7 @@ export default function AdminDetailPage({
         .eq("id", record.id);
       if (error) throw error;
       setMessage("編集内容を保存しました");
+      setEditSaved(true);
       await loadRecord();
     } catch (e) {
       setMessage(`保存エラー: ${e instanceof Error ? e.message : String(e)}`);
@@ -95,10 +136,23 @@ export default function AdminDetailPage({
     if (!record) return;
     const action = ADMIN_ACTIONS[record.status];
     if (!action) return;
+    // 配信バッチ稼働中のキャンセルは、外部送信済みなのに DB だけ戻る危険がある
+    if (
+      action.kind === "transition" &&
+      action.to === "ready_for_review" &&
+      isDeliveryBatchWindow()
+    ) {
+      setMessage(
+        "配信バッチの稼働中です（平日 7:00-7:30 / 土曜 9:00-9:30 JST）。" +
+          "この時間帯は配信済みと入れ違う恐れがあるためキャンセルできません。"
+      );
+      return;
+    }
     const confirmText =
-      action.kind === "transition"
+      action.confirm ??
+      (action.kind === "transition"
         ? `status を ${record.status} → ${action.to} にします。よろしいですか？`
-        : "鑑定文の再生成を開始します。よろしいですか？";
+        : "鑑定文の再生成を開始します。よろしいですか？");
     if (!window.confirm(confirmText)) {
       return;
     }
@@ -179,9 +233,15 @@ export default function AdminDetailPage({
 
       <section style={{ background: "white", borderRadius: 8, padding: 16, marginBottom: 16 }}>
         <h2 style={{ fontSize: "1rem", marginTop: 0 }}>AI 生成原文（reading_text）</h2>
-        <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.875rem", fontFamily: "inherit", margin: 0 }}>
-          {record.reading_text ?? "（未生成）"}
-        </pre>
+        {record.status === "generating" ? (
+          <p style={{ fontSize: "0.875rem", color: "#0b7492", margin: 0 }}>
+            現在鑑定文を生成中です…（完了すると自動で表示されます）
+          </p>
+        ) : (
+          <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.875rem", fontFamily: "inherit", margin: 0 }}>
+            {record.reading_text ?? "（未生成）"}
+          </pre>
+        )}
       </section>
 
       <section style={{ background: "white", borderRadius: 8, padding: 16, marginBottom: 16 }}>
@@ -190,6 +250,7 @@ export default function AdminDetailPage({
         <textarea
           value={editedText}
           onChange={(e) => setEditedText(e.target.value)}
+          onFocus={() => setEditSaved(false)}
           rows={16}
           style={{
             width: "100%",
@@ -201,7 +262,17 @@ export default function AdminDetailPage({
             boxSizing: "border-box",
           }}
         />
-        <button type="button" onClick={saveEdit} disabled={busy} style={{ ...btnStyle, marginTop: 8 }}>
+        <button
+          type="button"
+          onClick={saveEdit}
+          disabled={busy || editSaved}
+          style={{
+            ...btnStyle,
+            marginTop: 8,
+            background: editSaved ? "#ccc" : btnStyle.background,
+            cursor: editSaved ? "default" : "pointer",
+          }}
+        >
           編集を保存
         </button>
       </section>
@@ -214,7 +285,7 @@ export default function AdminDetailPage({
             disabled={busy}
             style={{
               ...btnStyle,
-              background: record.status === "ready_for_review" ? "#0b7492" : "#a6ba67",
+              background: ACTION_COLORS[record.status] ?? "#a6ba67",
               width: "100%",
             }}
           >

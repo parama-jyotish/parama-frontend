@@ -76,7 +76,20 @@ export const ERROR_STATUSES: PendingReadingStatus[] = [
   "calc_error",
   "generation_error",
   "send_error",
+  "blocked",
 ];
+
+/** 配信済みセクションの対象。bounced は「配信後に跳ねた」ため配信済み扱いとする。 */
+export const DELIVERED_STATUSES: PendingReadingStatus[] = ["sent", "bounced"];
+
+/** 配信済みセクションの 1 ページあたり表示件数 */
+export const DELIVERED_PAGE_SIZE = 20;
+
+/** status の日本語ラベル（一覧・詳細で共通利用） */
+export const STATUS_LABELS: Partial<Record<PendingReadingStatus, string>> = {
+  blocked: "LINE ブロック",
+  bounced: "バウンス",
+};
 
 /**
  * 管理画面から実行できる操作（バックエンド state_machine.py のマトリクスと対応）。
@@ -88,15 +101,52 @@ export const ERROR_STATUSES: PendingReadingStatus[] = [
  *    POST /api/admin/regenerate/{id} が遷移＋再キックをまとめて行う）
  */
 export type AdminAction =
-  | { kind: "transition"; to: PendingReadingStatus; label: string }
-  | { kind: "regenerate"; label: string };
+  | { kind: "transition"; to: PendingReadingStatus; label: string; confirm?: string }
+  | { kind: "regenerate"; label: string; confirm?: string };
 
 export const ADMIN_ACTIONS: Partial<Record<PendingReadingStatus, AdminAction>> = {
   ready_for_review: { kind: "transition", to: "approved", label: "承認する" },
+  approved: {
+    kind: "transition",
+    to: "ready_for_review",
+    label: "配信をキャンセル（レビュー待ちに戻す）",
+    confirm: "配信をキャンセルしてレビュー待ちに戻します。よろしいですか？",
+  },
   send_error: { kind: "transition", to: "approved", label: "approved に戻す（再配信）" },
   calc_error: { kind: "regenerate", label: "鑑定文を再生成する" },
   generation_error: { kind: "regenerate", label: "鑑定文を再生成する" },
 };
+
+/**
+ * 配信バッチ（H-3）の稼働時間帯かどうかを JST で判定する。
+ *
+ * H-3 は「approved 一覧を読む → 外部送信 → 条件付き UPDATE」の順で処理するため、
+ * 送信後・UPDATE 前にキャンセルが成功すると「配信済みなのに DB はレビュー待ち」に
+ * なる（要求仕様書 §4-6）。この時間帯はキャンセルを受け付けない。
+ *
+ * 平日 07:00-07:30 JST（deliver_weekday）／土曜 09:00-09:30 JST（deliver_saturday）
+ */
+export function isDeliveryBatchWindow(now: Date = new Date()): boolean {
+  // JST の曜日・時刻を得る（実行環境のタイムゾーンに依存しないよう明示変換する）
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tokyo",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const weekday = get("weekday");
+  const minutes = Number(get("hour")) * 60 + Number(get("minute"));
+
+  if (weekday === "Sat") {
+    return minutes >= 9 * 60 && minutes < 9 * 60 + 30;
+  }
+  if (weekday === "Sun") {
+    return false;
+  }
+  return minutes >= 7 * 60 && minutes < 7 * 60 + 30;
+}
 
 /**
  * 状態遷移を実行する（現在 status 一致の条件付き UPDATE で多重実行を防止。
@@ -109,9 +159,14 @@ export async function transitionStatus(
   from: PendingReadingStatus,
   to: PendingReadingStatus
 ): Promise<boolean> {
-  const fields: Record<string, string> = { status: to };
+  const fields: Record<string, string | null> = { status: to };
   if (to === "approved" && from === "ready_for_review") {
     fields.approved_at = new Date().toISOString();
+  }
+  // 配信キャンセル。status と時刻列の整合を保つため approved_at を消す。
+  // ready_for_review_at は「生成が完了した時刻」なので更新しない（§8-3）。
+  if (to === "ready_for_review" && from === "approved") {
+    fields.approved_at = null;
   }
   const { data, error } = await getSupabase()
     .from("pending_readings")
