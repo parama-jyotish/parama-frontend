@@ -19,6 +19,7 @@ import {
   isDeliveryBatchWindow,
   regenerateReading,
   transitionStatus,
+  type AdminAction,
   type PendingReading,
 } from "@/lib/supabase-admin";
 
@@ -32,6 +33,15 @@ const btnStyle: React.CSSProperties = {
   fontSize: "0.875rem",
   cursor: "pointer",
 };
+
+const BATCH_WINDOW_REASON =
+  "配信バッチの稼働中です（平日 7:00-7:30 / 土曜 9:00-9:30 JST）。" +
+  "この時間帯は配信済みと入れ違う恐れがあるためキャンセルできません。";
+
+/** 配信キャンセル（approved → ready_for_review）かどうか。 */
+function isCancelAction(action: AdminAction): boolean {
+  return action.kind === "transition" && action.to === "ready_for_review";
+}
 
 /** アクションボタンの色。承認＝青、キャンセル＝オレンジ、その他（再生成・再配信）＝緑。 */
 const ACTION_COLORS: Record<string, string> = {
@@ -62,6 +72,10 @@ export default function AdminDetailPage({
   const [loaded, setLoaded] = useState(false);
   // 保存直後は無効化し、テキストエリアにフォーカスが入ったら復帰させる
   const [editSaved, setEditSaved] = useState(false);
+  // 読み込み失敗は操作メッセージと別に持つ。復旧時に自動で消せるようにするため。
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // 配信バッチ稼働中か。境界をまたいでも表示が追随するよう定期的に再評価する。
+  const [inBatchWindow, setInBatchWindow] = useState(false);
 
   /**
    * レコードを再取得する。
@@ -77,8 +91,9 @@ export default function AdminDetailPage({
         .eq("id", id)
         .maybeSingle();
       if (error) {
-        setMessage(`読み込みエラー: ${error.message}`);
+        setLoadError(error.message);
       } else {
+        setLoadError(null);
         setRecord(data);
         if (!preserveEdit) setEditedText(data?.reading_text_edited ?? "");
       }
@@ -93,23 +108,42 @@ export default function AdminDetailPage({
   }, [loadRecord]);
 
   // 生成中は完了を待って自動反映する。status が generating を抜けたら止める。
+  //
+  // setInterval だと応答が 5 秒を超えたときにリクエストが並行し、古い generating の
+  // 応答が新しい完了応答を上書きして生成中表示のまま固まる。1 回の応答を待ってから
+  // 次を予約する逐次方式にして、同時に 1 本しか飛ばないようにしている。
   useEffect(() => {
     if (record?.status !== "generating") return;
     let cancelled = false;
-    const timer = setInterval(async () => {
-      if (cancelled) return;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = async () => {
       try {
         const next = await loadRecord(true);
-        if (next && next.status !== "generating") clearInterval(timer);
+        // 応答が返るまでにアンマウントされている場合があるので再確認する
+        if (cancelled) return;
+        if (next && next.status !== "generating") return;
       } catch {
         // 一時的な取得失敗ではポーリングを止めない（次回に再試行する）
+        if (cancelled) return;
       }
-    }, 5000);
+      timer = setTimeout(tick, 5000);
+    };
+
+    timer = setTimeout(tick, 5000);
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      clearTimeout(timer);
     };
   }, [record?.status, loadRecord]);
+
+  // 配信バッチ稼働時間帯の判定を 30 秒ごとに更新する
+  useEffect(() => {
+    const update = () => setInBatchWindow(isDeliveryBatchWindow());
+    update();
+    const timer = setInterval(update, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const saveEdit = async () => {
     if (!record) return;
@@ -136,16 +170,10 @@ export default function AdminDetailPage({
     if (!record) return;
     const action = ADMIN_ACTIONS[record.status];
     if (!action) return;
-    // 配信バッチ稼働中のキャンセルは、外部送信済みなのに DB だけ戻る危険がある
-    if (
-      action.kind === "transition" &&
-      action.to === "ready_for_review" &&
-      isDeliveryBatchWindow()
-    ) {
-      setMessage(
-        "配信バッチの稼働中です（平日 7:00-7:30 / 土曜 9:00-9:30 JST）。" +
-          "この時間帯は配信済みと入れ違う恐れがあるためキャンセルできません。"
-      );
+    // 配信バッチ稼働中のキャンセルは、外部送信済みなのに DB だけ戻る危険がある。
+    // ボタンは事前に無効化しているが、境界をまたいだ直後の押下に備えて再判定する。
+    if (isCancelAction(action) && isDeliveryBatchWindow()) {
+      setMessage(BATCH_WINDOW_REASON);
       return;
     }
     const confirmText =
@@ -206,6 +234,12 @@ export default function AdminDetailPage({
         {record.friend_name || record.email || record.id.slice(0, 8)}
         <span style={{ fontSize: "0.875rem", color: "#666", marginLeft: 12 }}>{record.status}</span>
       </h1>
+
+      {loadError && (
+        <p style={{ fontSize: "0.875rem", color: "#b00020" }}>
+          読み込みエラー: {loadError}
+        </p>
+      )}
 
       {message && (
         <p style={{ fontSize: "0.875rem", color: message.includes("エラー") ? "#b00020" : "#0b7492" }}>
@@ -279,18 +313,29 @@ export default function AdminDetailPage({
 
       {action && (
         <section style={{ background: "white", borderRadius: 8, padding: 16 }}>
-          <button
-            type="button"
-            onClick={doAction}
-            disabled={busy}
-            style={{
-              ...btnStyle,
-              background: ACTION_COLORS[record.status] ?? "#a6ba67",
-              width: "100%",
-            }}
-          >
-            {action.label}
-          </button>
+          {(() => {
+            const blocked = isCancelAction(action) && inBatchWindow;
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={doAction}
+                  disabled={busy || blocked}
+                  style={{
+                    ...btnStyle,
+                    background: blocked ? "#ccc" : ACTION_COLORS[record.status] ?? "#a6ba67",
+                    cursor: blocked ? "default" : "pointer",
+                    width: "100%",
+                  }}
+                >
+                  {action.label}
+                </button>
+                {blocked && (
+                  <p style={{ ...labelStyle, marginBottom: 0 }}>{BATCH_WINDOW_REASON}</p>
+                )}
+              </>
+            );
+          })()}
         </section>
       )}
     </main>
