@@ -255,6 +255,17 @@ export default function AdminPage() {
       )}
 
       <h2 style={{ fontSize: "1rem", margin: "24px 0 12px" }}>
+        エラー（{errorRecords.length}件）
+        <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "normal", marginLeft: 8 }}>— 新着順 —</span>
+      </h2>
+      {errorRecords.length === 0 && !loading && (
+        <p style={{ fontSize: "0.875rem", color: "#666" }}>エラーはありません</p>
+      )}
+      {errorRecords.map((r) => (
+        <RecordRow key={r.id} record={r} />
+      ))}
+
+      <h2 style={{ fontSize: "1rem", margin: "32px 0 12px" }}>
         レビュー待ち（{reviewQueue.length}件）
         <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "normal", marginLeft: 8 }}>— 生成順 —</span>
       </h2>
@@ -312,16 +323,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      <h2 style={{ fontSize: "1rem", margin: "32px 0 12px" }}>
-        エラー（{errorRecords.length}件）
-        <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "normal", marginLeft: 8 }}>— 新着順 —</span>
-      </h2>
-      {errorRecords.length === 0 && !loading && (
-        <p style={{ fontSize: "0.875rem", color: "#666" }}>エラーはありません</p>
-      )}
-      {errorRecords.map((r) => (
-        <RecordRow key={r.id} record={r} />
-      ))}
     </main>
   );
 }
