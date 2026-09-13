@@ -256,6 +256,7 @@ export default function AdminPage() {
 
       <h2 style={{ fontSize: "1rem", margin: "24px 0 12px" }}>
         レビュー待ち（{reviewQueue.length}件）
+        <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "normal", marginLeft: 8 }}>— 生成順 —</span>
       </h2>
       {reviewQueue.length === 0 && !loading && (
         <p style={{ fontSize: "0.875rem", color: "#666" }}>レビュー待ちはありません</p>
@@ -266,6 +267,7 @@ export default function AdminPage() {
 
       <h2 style={{ fontSize: "1rem", margin: "32px 0 12px" }}>
         配信待ち（{approvedQueue.length}件）
+        <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "normal", marginLeft: 8 }}>— 承認順 —</span>
       </h2>
       {approvedQueue.length === 0 && !loading && (
         <p style={{ fontSize: "0.875rem", color: "#666" }}>配信待ちはありません</p>
@@ -274,7 +276,10 @@ export default function AdminPage() {
         <RecordRow key={r.id} record={r} extra={`承認 ${formatDate(r.approved_at)}`} />
       ))}
 
-      <h2 style={{ fontSize: "1rem", margin: "32px 0 12px" }}>配信済み</h2>
+      <h2 style={{ fontSize: "1rem", margin: "32px 0 12px" }}>
+        配信済み
+        <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "normal", marginLeft: 8 }}>— 最新順 —</span>
+      </h2>
       {delivered.length === 0 && !loading && (
         <p style={{ fontSize: "0.875rem", color: "#666" }}>配信済みはありません</p>
       )}
@@ -309,6 +314,7 @@ export default function AdminPage() {
 
       <h2 style={{ fontSize: "1rem", margin: "32px 0 12px" }}>
         エラー（{errorRecords.length}件）
+        <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "normal", marginLeft: 8 }}>— 新着順 —</span>
       </h2>
       {errorRecords.length === 0 && !loading && (
         <p style={{ fontSize: "0.875rem", color: "#666" }}>エラーはありません</p>
