@@ -315,16 +315,21 @@ export default function AdminDetailPage({
         <section style={{ background: "white", borderRadius: 8, padding: 16 }}>
           {(() => {
             const blocked = isCancelAction(action) && inBatchWindow;
+            const emptyEditedText =
+              record.status === "ready_for_review" &&
+              (record.reading_text_edited === null || record.reading_text_edited?.trim() === "");
             return (
               <>
                 <button
                   type="button"
                   onClick={doAction}
-                  disabled={busy || blocked}
+                  disabled={busy || blocked || emptyEditedText}
                   style={{
                     ...btnStyle,
-                    background: blocked ? "#ccc" : ACTION_COLORS[record.status] ?? "#a6ba67",
-                    cursor: blocked ? "default" : "pointer",
+                    background: blocked || emptyEditedText
+                      ? "#ccc"
+                      : ACTION_COLORS[record.status] ?? "#a6ba67",
+                    cursor: blocked || emptyEditedText ? "default" : "pointer",
                     width: "100%",
                   }}
                 >
@@ -332,6 +337,11 @@ export default function AdminDetailPage({
                 </button>
                 {blocked && (
                   <p style={{ ...labelStyle, marginBottom: 0 }}>{BATCH_WINDOW_REASON}</p>
+                )}
+                {emptyEditedText && (
+                  <p style={{ ...labelStyle, color: "#b00020", marginBottom: 0 }}>
+                    編集済み文が空です。編集欄に本文を入れて保存してから承認してください。
+                  </p>
                 )}
               </>
             );
