@@ -348,6 +348,24 @@ export default function AdminDetailPage({
           })()}
         </section>
       )}
+
+      <div style={{ textAlign: "center", marginTop: 24 }}>
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          style={{
+            background: "transparent",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: "8px 24px",
+            fontSize: "0.75rem",
+            color: "#666",
+            cursor: "pointer",
+          }}
+        >
+          ↑ ページトップへ
+        </button>
+      </div>
     </main>
   );
 }
